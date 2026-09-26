@@ -31,6 +31,22 @@ for rng in ["C4:E4","G4:H4","C6:E6","G6:H6","B10:F10","B14:E14","B25:E25"]:
 for cell in ["B4","F4","B6","F6","B8","F8","B10","B12","F12","B14","F14","B16","C16","D16","E16","F16","B19","B25","F25"]:
     ws.write(cell,"",val)
 ws.write("B28","Prêt",lab)
+
+# Formula-backed first-pass parser for Excel 365. Paste into Magic Import!B5.
+def label_formula(label):
+    return '=LET(t,\'Magic Import\'!$B$5,ls,TEXTSPLIT(SUBSTITUTE(t,CHAR(13),""),CHAR(10)),l,INDEX(FILTER(ls,ISNUMBER(SEARCH("'+label+'",ls))),1),c,TEXTSPLIT(l,"|"),z,TRIM(SUBSTITUTE(c,"**","")),i,XMATCH("'+label+'",z,0),TRIM(SUBSTITUTE(INDEX(c,1,i+1),"**","")))'
+ws.write_formula("B6",label_formula("ID d'intervention"),val)
+ws.write_formula("F6",label_formula("Provisioning Order Id"),val)
+ws.write_formula("F8",label_formula("ID client"),val)
+ws.write_formula("B10",label_formula("Descriptions"),val)
+ws.write_formula("B19",label_formula("Nom de la personne de contact"),val)
+ws.write_formula("F16",'=LET(t,\'Magic Import\'!$B$5,p,IFERROR(label_formula("N° de GSM"),""),IF(LEFT(SUBSTITUTE(p," ",""),5)="00324","04"&MID(SUBSTITUTE(p," ",""),6,99),p))',val)
+ws.write_formula("B12",'=IF(ISNUMBER(SEARCH("Fiber",\'Magic Import\'!$B$5)),"",IFERROR(label_formula("NA"),""))',val)
+ws.write_formula("F12",'=IFERROR(TEXTBEFORE(TEXTAFTER(\'Magic Import\'!$B$5,"Service ID = "),CHAR(10)),"")',val)
+ws.write_formula("F25",label_formula("Statut"),val)
+ws.write_formula("B4",'=IF(ISNUMBER(SEARCH("Fiber",\'Magic Import\'!$B$5)),"fiber",IF(ISNUMBER(SEARCH("Cuivre",\'Magic Import\'!$B$5)),"copper",""))',val)
+ws.write_formula("B14",'=IFERROR(LET(t,\'Magic Import\'!$B$5,ls,TEXTSPLIT(SUBSTITUTE(t,CHAR(13),""),CHAR(10)),h,INDEX(FILTER(ls,ISNUMBER(SEARCH("Nom de la rue",ls))),1),d,INDEX(FILTER(ls,ISNUMBER(SEARCH("Belgique",ls))),1),hc,TEXTSPLIT(h,"|"),dc,TEXTSPLIT(d,"|"),TRIM(INDEX(dc,1,5))&" "&TRIM(INDEX(dc,1,6))&TRIM(INDEX(dc,1,7))&", "&TRIM(INDEX(dc,1,2))&" "&TRIM(INDEX(dc,1,3))),"")',val)
+ws.write_formula("F14",'=IFERROR(LET(t,\'Magic Import\'!$B$5,ls,TEXTSPLIT(SUBSTITUTE(t,CHAR(13),""),CHAR(10)),d,INDEX(FILTER(ls,ISNUMBER(SEARCH("Belgique",ls))),1),dc,TEXTSPLIT(d,"|"),TRIM(INDEX(dc,1,12))),"")',val)
 ws.insert_button("G2",{"macro":"OpenMagicImport","caption":"Import intelligent","width":145,"height":28})
 
 # Magic import sheet
