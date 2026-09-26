@@ -1,12 +1,12 @@
 {
-  "version": "0.1.0-corp-test",
+  "version": "0.1.0-dev",
   "channel": "development",
-  "status": "corporate-test-artifact",
-  "artifact": "PCD-Excel-Version-0.1.0-corp-test.xlsm",
-  "artifactRun": 36272077786,
-  "artifactId": 10915368450,
+  "status": "update-development",
+  "artifact": "PCD-Excel-Version-latest.xlsm",
+  "sha256": "",
+  "updateSource": "github-raw",
+  "updateEnabled": true,
   "offlineRuntime": true,
   "referenceRepository": "milance78/interventions-pcd",
-  "excelRepository": "milance78/PCD-excel-version-",
-  "notes": "Early corporate test build. Final VBA wiring and update mechanism are still under development."
+  "excelRepository": "milance78/PCD-excel-version-"
 }
