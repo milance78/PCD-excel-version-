@@ -1,0 +1,24 @@
+name: Build PCD Excel XLSM
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          python -m pip install xlsxwriter
+          sudo apt-get update
+          sudo apt-get install -y libreoffice python3-uno
+      - name: Build XLSM
+        run: python build/build_xlsm.py
+      - name: Publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCD-Excel-Version
+          path: dist/PCD-Excel-Version-*.xlsm
