@@ -1,0 +1,10 @@
+{
+  "application": "PCD Excel Version",
+  "version": "0.1.0-dev",
+  "channel": "development",
+  "status": "bootstrap",
+  "artifact": "PCD-Excel-Version.xlsm",
+  "updateSource": "github",
+  "offlineRuntime": true,
+  "referenceRepository": "milance78/interventions-pcd"
+}
