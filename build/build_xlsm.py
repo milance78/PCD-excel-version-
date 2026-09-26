@@ -5,14 +5,10 @@ import xlsxwriter
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-
 VERSION = "0.1.0-corp-test-2"
 OUTPUT = DIST / f"PCD-Excel-Version-{VERSION}.xlsm"
 VBA_BIN = ROOT / "build" / "vbaProject.bin"
 
-# The generic VBA project is intentionally embedded so the XLSM remains a valid
-# macro-enabled workbook. The project-specific VBA source lives in /vba and will
-# be wired into the binary project in the dedicated VBA build step.
 if not VBA_BIN.exists():
     urllib.request.urlretrieve(
         "https://raw.githubusercontent.com/jmcnamara/XlsxWriter/main/examples/vbaProject.bin",
@@ -22,7 +18,6 @@ if not VBA_BIN.exists():
 wb = xlsxwriter.Workbook(str(OUTPUT))
 wb.set_properties({"title": "PCD Excel Version", "comments": "PCD corporate test build 2"})
 wb.set_vba_name("ThisWorkbook")
-
 main = wb.add_worksheet("Intervention en cours")
 magic = wb.add_worksheet("Magic Import")
 main.set_vba_name("Sheet1")
@@ -36,27 +31,14 @@ main.set_column("C:E", 15)
 main.set_column("F:F", 28)
 main.set_column("G:H", 16)
 
-title = wb.add_format({
-    "bold": True, "font_size": 18, "align": "center",
-    "valign": "vcenter", "bg_color": "#D9E1F2", "border": 1
-})
-label = wb.add_format({
-    "bold": True, "font_color": "#666666", "border": 1,
-    "bg_color": "#F7F7F7", "valign": "vcenter"
-})
+title = wb.add_format({"bold": True, "font_size": 18, "align": "center", "valign": "vcenter", "bg_color": "#D9E1F2", "border": 1})
+label = wb.add_format({"bold": True, "font_color": "#666666", "border": 1, "bg_color": "#F7F7F7", "valign": "vcenter"})
 value = wb.add_format({"border": 1, "text_wrap": True, "valign": "top"})
-link = wb.add_format({
-    "font_color": "#0563C1", "underline": 1,
-    "align": "center", "valign": "vcenter", "border": 1
-})
+link = wb.add_format({"font_color": "#0563C1", "underline": 1, "align": "center", "valign": "vcenter", "border": 1})
+
 main.merge_range("A1:H1", "INTERVENTION EN COURS", title)
 main.write_url("F2", "internal:'Magic Import'!B5", link, "Import intelligent")
-main.write_url(
-    "G2",
-    "https://github.com/milance78/PCD-excel-version-/raw/refs/heads/main/dist/PCD-Excel-Version-latest.xlsm",
-    link,
-    "Mettre à jour"
-)
+main.write_url("G2", "https://github.com/milance78/PCD-excel-version-/raw/refs/heads/main/dist/PCD-Excel-Version-latest.xlsm", link, "Mettre à jour")
 main.write("H2", VERSION, label)
 
 fields = [
@@ -71,42 +53,20 @@ fields = [
 ]
 for text, cell in fields:
     main.write(cell, text, label)
-
 for rng in ["C4:E4", "G4:H4", "C6:E6", "G6:H6", "B10:F10", "B14:E14", "B25:E25"]:
     main.merge_range(rng, "", value)
-
-for cell in [
-    "B4","F4","B6","F6","B8","F8","B10","B12","F12","B14","F14",
-    "B16","C16","D16","E16","F16","B19","B25","F25"
-]:
+for cell in ["B4","F4","B6","F6","B8","F8","B10","B12","F12","B14","F14","B16","C16","D16","E16","F16","B19","B25","F25"]:
     if cell not in {"B10", "B14", "B25"}:
         main.write(cell, "", value)
-
 main.write("B28", f"Prêt — {VERSION}", label)
 
 magic.hide_gridlines(2)
 magic.set_column("A:A", 3)
 magic.set_column("B:H", 20)
 magic.merge_range("A1:H1", "IMPORT INTELLIGENT", title)
-magic.merge_range(
-    "A2:H3",
-    "Colle le texte SAFE / NPS / Work Item dans la grande zone ci-dessous.",
-    wb.add_format({
-        "text_wrap": True, "valign": "vcenter",
-        "border": 1, "bg_color": "#FFF2CC"
-    })
-)
-magic.merge_range(
-    "B5:H22", "",
-    wb.add_format({"border": 1, "text_wrap": True, "valign": "top"})
-)
+magic.merge_range("A2:H3", "Colle le texte SAFE / NPS / Work Item dans la grande zone ci-dessous.", wb.add_format({"text_wrap": True, "valign": "vcenter", "border": 1, "bg_color": "#FFF2CC"}))
+magic.merge_range("B5:H22", "", wb.add_format({"border": 1, "text_wrap": True, "valign": "top"}))
 magic.write_url("B24", "internal:'Intervention en cours'!A1", link, "Retour")
-magic.write_url(
-    "D24",
-    "https://github.com/milance78/PCD-excel-version-/raw/refs/heads/main/dist/PCD-Excel-Version-latest.xlsm",
-    link,
-    "Télécharger la dernière version"
-)
-
+magic.write_url("D24", "https://github.com/milance78/PCD-excel-version-/raw/refs/heads/main/dist/PCD-Excel-Version-latest.xlsm", link, "Télécharger la dernière version")
 wb.close()
 print(OUTPUT)
