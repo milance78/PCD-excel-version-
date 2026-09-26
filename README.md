@@ -1,24 +1,22 @@
 # PCD Excel Version
 
-Excel/VBA replika aplikacije `interventions-pcd`.
+This repository is the Excel/VBA reconstruction of the reference project `milance78/interventions-pcd`.
 
-## Uloga ovog repozitorijuma
+## Current build
 
-- `interventions-pcd` je referentna implementacija i izvor poslovnih pravila.
-- Ovaj repozitorijum je nova Excel/VBA implementacija.
-- Korporacijski računar treba da može da preuzme **najnoviju verziju aplikacije** iz ovog repozitorijuma dok je razvoj aktivan.
-- Preuzeta Excel aplikacija mora nakon toga da radi lokalno, bez Firebase-a, Node-a, React-a ili drugih serverskih komponenti.
+**0.1.0-corp-test**
 
-## Plan
+The current GitHub Actions build produces a genuine `.xlsm` containing an embedded VBA project and the first corporate-test workbook layout/import mapping.
 
-1. Napraviti Excel `.xlsm` aplikaciju.
-2. Replikovati ključne funkcije PCD Tool-a, počev od Magic Import-a.
-3. Napraviti kontrolu verzije/update mehanizam preko GitHub-a koji poštuje korporacijska ograničenja.
-4. Svaka objavljena verzija dobija eksplicitnu verziju i checksum.
-5. Nakon završetka razvoja, aplikacija može biti isporučena kao potpuno lokalna/offline verzija.
+Important: this is an **early corporate test build**, not the final PCD replacement. The full VBA parser source is versioned in `vba/PCD_MagicImport.bas`; the first downloadable artifact uses a conservative build path while VBA project wiring is being finalized.
 
-## Referentni projekat
+## Reference vs Excel project
 
-`milance78/interventions-pcd`
+- Reference: `milance78/interventions-pcd`
+- Excel project: `milance78/PCD-excel-version-`
+- Runtime target: local Excel/offline
+- GitHub: development distribution/build source, not a runtime dependency
 
-Ovaj projekat se **ne menja** kao deo razvoja Excel verzije.
+## Build
+
+GitHub Actions workflow: **Build PCD Excel XLSM**.
