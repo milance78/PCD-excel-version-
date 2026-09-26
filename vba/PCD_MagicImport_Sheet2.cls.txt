@@ -1,0 +1,12 @@
+Attribute VB_Name = "Sheet2"
+Option Explicit
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    If Intersect(Target, Me.Range("B5")) Is Nothing Then Exit Sub
+    If Len(Trim$(CStr(Me.Range("B5").Value))) < 10 Then Exit Sub
+    On Error GoTo Fail
+    Application.EnableEvents = False
+    PCD_MagicImport_ParseFromSheet CStr(Me.Range("B5").Value)
+Fail:
+    Application.EnableEvents = True
+End Sub
