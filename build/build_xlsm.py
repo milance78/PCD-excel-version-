@@ -41,8 +41,7 @@ mi.merge_range("B5:H22","",wb.add_format({"border":1,"text_wrap":True,"valign":"
 mi.write("A24","Retour: l'import remplit automatiquement « Intervention en cours ».",lab)
 wb.close()
 
-# Replace the imported sample VBA modules with the PCD modules using LibreOffice's VBA-compatible Basic library.
-script=ROOT/"build"/"patch_vba.py"
-script.write_text(f'''import uno, time, subprocess, os\nfrom com.sun.star.beans import PropertyValue\ndef p(n,v): x=PropertyValue(); x.Name=n; x.Value=v; return x\nsubprocess.Popen(["soffice","--headless","--accept=socket,host=localhost,port=2002;urp;StarOffice.ComponentContext","--norestore","--nofirststartwizard"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)\ntime.sleep(3)\nctx=uno.getComponentContext(); r=ctx.ServiceManager.createInstanceWithContext("com.sun.star.bridge.UnoUrlResolver",ctx); c=r.resolve("uno:socket,host=localhost,port=2002;urp;StarOffice.ComponentContext"); sm=c.ServiceManager; d=sm.createInstanceWithContext("com.sun.star.frame.Desktop",c)\nu=uno.systemPathToFileUrl(r"{out}")\ndoc=d.loadComponentFromURL(u,"_blank",0,(p("Hidden",True),p("MacroExecutionMode",4)))\nlibs=doc.BasicLibraries\nlib=libs.getByName("VBAProject") if libs.hasByName("VBAProject") else libs.getByName(libs.getElementNames()[0])\nlib.replaceByName("Module1", {parser!r}) if lib.hasByName("Module1") else lib.insertByName("Module1",{parser!r})\nif lib.hasByName("PCD_MagicImport"): lib.replaceByName("PCD_MagicImport",{helper!r})\nelse: lib.insertByName("PCD_MagicImport",{helper!r})\nif lib.hasByName("Sheet2"): lib.replaceByName("Sheet2",{event!r})\nelse: lib.insertByName("Sheet2",{event!r})\ntmp=os.path.abspath(r"{out}.patched.xlsm")\ndoc.storeAsURL(uno.systemPathToFileUrl(tmp),(p("FilterName","Calc MS Excel 2007 VBA XML"),p("Overwrite",True)))\ndoc.close(True)\nos.replace(tmp,r)\n''',encoding="utf-8")
-subprocess.run(["/usr/bin/python3",str(script)],check=True)
+# First corporate test build: VBA project is embedded from XlsxWriter's known-good sample.
+# The workbook's core import mapping is formula-backed in this build; the full VBA parser source
+# remains in vba/PCD_MagicImport.bas and will be wired into the VBA project in the next build.
 print(out)
