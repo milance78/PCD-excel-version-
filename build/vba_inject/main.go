@@ -41,7 +41,21 @@ func main() {
 
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
     updater := stripNameAndOptionExplicit(string(read(updaterPath)))
-    module1Source := "Attribute VB_Name = \"Module1\"\r\nOption Explicit\r\n" + magic + "\r\n\r\n" + updater + "\r\n"
+
+    // VBA requires module-level declarations to appear before the first procedure.
+    // Keep the updater constants at the top of Module1, then append both procedure sets.
+    updaterParts := strings.SplitN(updater, "Public Sub CheckForUpdate()", 2)
+    if len(updaterParts) != 2 {
+        panic("PCD_Updater.bas: CheckForUpdate procedure not found")
+    }
+    updaterDecls := strings.TrimSpace(updaterParts[0])
+    updaterProcedures := "Public Sub CheckForUpdate()" + updaterParts[1]
+
+    module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
+        "Option Explicit\r\n" +
+        updaterDecls + "\r\n\r\n" +
+        magic + "\r\n\r\n" +
+        updaterProcedures + "\r\n"
 
     foundModule1, foundSheet2 := false, false
     for i := range p.Modules {
@@ -73,6 +87,31 @@ func main() {
     }
     out, err := vbaproject.Write(p)
     if err != nil { panic(err) }
+
+    // Read the generated project back and validate the expected public macros.
+    check, err := vbaproject.Read(out)
+    if err != nil { panic(fmt.Sprintf("post-write VBA validation failed: %v", err)) }
+    validated := false
+    for _, m := range check.Modules {
+        if m.Name == "Module1" {
+            if !strings.Contains(m.Source, "Public Sub ImportMagicFromSheet()") {
+                panic("post-write VBA validation: ImportMagicFromSheet missing")
+            }
+            if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
+                panic("post-write VBA validation: CheckForUpdate missing")
+            }
+            firstProc := len(m.Source)
+            for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
+                if i := strings.Index(m.Source, token); i >= 0 && i < firstProc { firstProc = i }
+            }
+            if i := strings.Index(m.Source, "Private Const "); i >= firstProc {
+                panic("post-write VBA validation: Private Const appears after first procedure")
+            }
+            validated = true
+        }
+    }
+    if !validated { panic("post-write VBA validation: Module1 not found") }
+
     write(outPath, out)
-    fmt.Printf("Injected PCD VBA into valid base: %s (%d bytes)\n", outPath, len(out))
+    fmt.Printf("Injected and validated PCD VBA: %s (%d bytes)\n", outPath, len(out))
 }
