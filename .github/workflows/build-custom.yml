@@ -1,0 +1,20 @@
+name: Build custom PCD Excel XLSM
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install xlsxwriter olefile ms-ovba-compression
+      - run: python build/build_custom_vba.py
+      - run: cp build/vbaProject-custom.bin build/vbaProject.bin
+      - run: python build/build_xlsm.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PCD-Excel-Custom
+          path: dist/PCD-Excel-Version-*.xlsm
