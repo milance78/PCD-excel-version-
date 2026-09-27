@@ -23,7 +23,7 @@ project.project_id = "{9E394C0B-697E-4AEE-9FA6-446F51FB30DC}"
 def write_crlf(source: Path, destination: Path) -> None:
     text = source.read_text(encoding="utf-8")
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    destination.write_text(text.replace("\n", "\r\n"), encoding="cp1252")
+    destination.write_text(text.replace("\n", "\r\n"), encoding="utf-8")
 
 
 def add_doc(name, source_name, guid, cookie, body=""):
