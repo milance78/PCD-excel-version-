@@ -4,6 +4,13 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths-ignore:
+      - 'dist/**'
+      - 'VERSION.json'
+
+concurrency:
+  group: pcd-excel-build-main
+  cancel-in-progress: true
 
 permissions:
   contents: write
