@@ -1,9 +1,9 @@
 {
-  "version": "0.1.0-corp-test-3",
+  "version": "0.1.0-corp-test-4",
   "channel": "development",
   "status": "corporate-test-artifact",
   "artifact": "dist/PCD-Excel-Version-latest.xlsm",
-  "sha256": "1e4fbee082ccff3df422a7804fd3eb8b1c6776b1637c7788976e1ca615d778f3",
+  "sha256": "1d1ef0544aee0cbe0c73d8f62bbae0a2ebb47707c416a03fcd2e4256110861ca",
   "updateSource": "github-raw",
   "updateEnabled": true,
   "offlineRuntime": true,
