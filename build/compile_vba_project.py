@@ -22,7 +22,7 @@ TMP.mkdir(parents=True)
 project = VbaProject()
 project.project_id = "{9E394C0B-697E-4AEE-9FA6-446F51FB30DC}"
 
-def add_doc(name, source_name, guid, cookie):
+def add_doc(name, source_name, guid, cookie, body=""):
     src = TMP / source_name
     src.write_text(
         "VERSION 1.0 CLASS\nBEGIN\n  MultiUse = -1  'True\nEND\n"
@@ -30,7 +30,7 @@ def add_doc(name, source_name, guid, cookie):
         + "Attribute VB_GlobalNameSpace = False\n"
         + "Attribute VB_Creatable = False\n"
         + "Attribute VB_PredeclaredId = True\n"
-        + "Attribute VB_Exposed = True\n",
+        + "Attribute VB_Exposed = True\n" + body,
         encoding="cp1252",
     )
     mod = DocModule(name)
@@ -43,7 +43,7 @@ def add_doc(name, source_name, guid, cookie):
 
 add_doc("ThisWorkbook", "ThisWorkbook.cls", "0002081900000000C000000000000046", 0xB81C)
 add_doc("Sheet1", "Sheet1.cls", "0002082000000000C000000000000046", 0x9B9A)
-add_doc("Sheet2", "Sheet2.cls", "0002082000000000C000000000000046", 0x9B9B)
+add_doc("Sheet2", "Sheet2.cls", "0002082000000000C000000000000046", 0x9B9B, """\nPrivate Sub Worksheet_Change(ByVal Target As Range)\n    If Intersect(Target, Me.Range("B5")) Is Nothing Then Exit Sub\n    If Len(Trim$(CStr(Me.Range("B5").Value))) < 10 Then Exit Sub\n    On Error GoTo CleanFail\n    Application.EnableEvents = False\n    ParseMagicImportText CStr(Me.Range("B5").Value), False\nCleanFail:\n    Application.EnableEvents = True\nEnd Sub\n""")
 
 for module_name in ("PCD_MagicImport", "PCD_Updater"):
     src = VBA / (module_name + ".bas")
