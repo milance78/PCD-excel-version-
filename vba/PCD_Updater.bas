@@ -154,7 +154,7 @@ Private Function FileSha256(ByVal filePath As String) As String
     Set re = CreateObject("VBScript.RegExp")
     re.Global = False
     re.IgnoreCase = True
-    re.Pattern = """" & key & """" & "\s*:\s*""([^""]*)"""
+    re.Pattern = "([0-9A-Fa-f]{64})"
     Set matches = re.Execute(text)
 
     If matches.Count = 0 Then Err.Raise vbObjectError + 1013, , "Windows nije vratio SHA-256 vrednost."
@@ -168,7 +168,7 @@ Private Function JsonValue(ByVal json As String, ByVal key As String) As String
     Set re = CreateObject("VBScript.RegExp")
     re.Global = False
     re.IgnoreCase = True
-    re.Pattern = """" & key & """" & "s*:s*""([^""]*)"""
+    re.Pattern = """" & key & """" & "\s*:\s*""([^""]*)"""
     Set matches = re.Execute(json)
 
     If matches.Count > 0 Then JsonValue = matches(0).SubMatches(0)
