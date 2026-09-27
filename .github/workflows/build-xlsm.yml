@@ -14,9 +14,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build tools
-        run: python -m pip install xlsxwriter
+        run: python -m pip install xlsxwriter olefile
       - name: Build XLSM
         run: python build/build_xlsm.py
+      - name: Inspect VBA container
+        run: python build/inspect_vba.py
       - name: Publish artifact
         uses: actions/upload-artifact@v4
         with:
