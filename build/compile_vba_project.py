@@ -91,6 +91,16 @@ for module_name in ("PCD_MagicImport", "PCD_Updater"):
     mod = StdModule("Module1" if module_name == "PCD_MagicImport" else module_name)
     mod.add_file(str(normalized))
     mod.normalize_file()
+
+    # MS-OVBA declares project codepage cp1252 in the dir stream.
+    # StdModule.normalize_file() reads UTF-8 source, but its .new output is
+    # written verbatim into the VBA module stream. Re-encode that normalized
+    # source as cp1252 while preserving CRLF line endings before compression.
+    normalized_output = Path(str(normalized) + ".new")
+    with normalized_output.open("r", encoding="utf-8", newline="") as f:
+        normalized_text = f.read()
+    normalized_output.write_bytes(normalized_text.encode("cp1252"))
+
     project.add_module(mod)
 
 ProjectOleFile.write_file(project)
