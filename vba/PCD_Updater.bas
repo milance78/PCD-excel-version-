@@ -252,7 +252,7 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
         "  On Error GoTo 0" & vbCrLf & _
         "  WScript.Sleep 1000" & vbCrLf & _
         "Next" & vbCrLf & _
-        "If fso.FileExists(oldFile) Then Call shell.Run(Chr(34) & oldFile & Chr(34), 1, False)"
+        "If fso.FileExists(oldFile) Then shell.Run Chr(34) & oldFile & Chr(34), 1, False"
 
     Set fso = CreateObject("Scripting.FileSystemObject")
     Set ts = fso.CreateTextFile(scriptPath, True, False)
