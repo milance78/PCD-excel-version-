@@ -18,8 +18,8 @@ Public Sub CheckForUpdate()
     If Len(currentVersion) = 0 Then currentVersion = "0.0.0"
 
     Application.StatusBar = "PCD Excel: proveravam novu verziju..."
-    remoteVersion = JsonValue(HttpGetText(VERSION_URL), "version")
-    remoteSha256 = LCase$(JsonValue(HttpGetText(VERSION_URL), "sha256"))
+    remoteVersion = JsonValue(HttpGetText(VERSION_URL & "?t=" & CStr(Timer)), "version")
+    remoteSha256 = LCase$(JsonValue(HttpGetText(VERSION_URL & "?t=" & CStr(Timer + 1)), "sha256"))
 
     If Len(remoteVersion) = 0 Then Err.Raise vbObjectError + 1001, , "GitHub nije vratio broj verzije."
     If Len(remoteSha256) <> 64 Then Err.Raise vbObjectError + 1002, , "GitHub nije vratio ispravan SHA-256."
