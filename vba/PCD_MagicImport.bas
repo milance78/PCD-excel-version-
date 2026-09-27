@@ -116,7 +116,7 @@ Private Function SourceType(ByVal t As String) As String
     End If
 End Function
 
-Private Sub Put(ByVal ws As Worksheet, ByVal cell As String, ByVal v As String)
+Private Sub WriteCell(ByVal ws As Worksheet, ByVal cell As String, ByVal v As String)
     ws.Range(cell).Value = v
 End Sub
 
@@ -198,14 +198,14 @@ Public Sub ParseMagicImportText(ByVal rawText As String, Optional ByVal showMess
     If LCase$(status) = "done" Or LCase$(status) = "closed" Or LCase$(status) = "resolved" Then status = "completed"
 
     Set ws = ThisWorkbook.Worksheets("Intervention en cours")
-    Put ws, "B4", infra: Put ws, "F4", network
-    Put ws, "B6", iid: Put ws, "F6", oag
-    Put ws, "B8", snow: Put ws, "F8", cidClient
-    Put ws, "B10", desc: Put ws, "B12", na: Put ws, "F12", cid
-    Put ws, "B14", addr: Put ws, "F14", lom
-    Put ws, "B16", box: Put ws, "C16", floor: Put ws, "D16", apt: Put ws, "E16", block: Put ws, "F16", phone
-    Put ws, "B19", client: Put ws, "F25", status
-    Put ws, "B28", "Source détectée: " & src
+    WriteCell ws, "B4", infra: WriteCell ws, "F4", network
+    WriteCell ws, "B6", iid: WriteCell ws, "F6", oag
+    WriteCell ws, "B8", snow: WriteCell ws, "F8", cidClient
+    WriteCell ws, "B10", desc: WriteCell ws, "B12", na: WriteCell ws, "F12", cid
+    WriteCell ws, "B14", addr: WriteCell ws, "F14", lom
+    WriteCell ws, "B16", box: WriteCell ws, "C16", floor: WriteCell ws, "D16", apt: WriteCell ws, "E16", block: WriteCell ws, "F16", phone
+    WriteCell ws, "B19", client: WriteCell ws, "F25", status
+    WriteCell ws, "B28", "Source détectée: " & src
     ws.Activate
     
     If showMessage Then MsgBox "Import terminé." & vbCrLf & "Source: " & src, vbInformation, "PCD Magic Import"
