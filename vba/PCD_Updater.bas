@@ -26,7 +26,7 @@ Public Sub CheckForUpdate()
 
     If CompareVersions(remoteVersion, currentVersion) <= 0 Then
         Application.StatusBar = False
-        MsgBox "Koristiš najnoviju dostupnu verziju: " & currentVersion, vbInformation, "PCD Excel"
+        MsgBox "Koristis najnoviju dostupnu verziju: " & currentVersion, vbInformation, "PCD Excel"
         Exit Sub
     End If
 
@@ -34,8 +34,8 @@ Public Sub CheckForUpdate()
         "Dostupna je nova verzija PCD Excel-a." & vbCrLf & vbCrLf & _
         "Trenutna: " & currentVersion & vbCrLf & _
         "Nova: " & remoteVersion & vbCrLf & vbCrLf & _
-        "Da li želiš da je preuzmem i instaliram?", _
-        vbQuestion + vbYesNo, "PCD Excel — ažuriranje")
+        "Da li zelis da je preuzmem i instaliram?", _
+        vbQuestion + vbYesNo, "PCD Excel - azuriranje")
 
     If answer <> vbYes Then
         Application.StatusBar = False
@@ -44,9 +44,9 @@ Public Sub CheckForUpdate()
 
     If Not ThisWorkbook.Saved Then
         answer = MsgBox( _
-            "Postoje nesačuvane izmene u ovom Excel fajlu." & vbCrLf & vbCrLf & _
-            "Sačuvaj ih pre ažuriranja, pa ponovo pokreni proveru.", _
-            vbExclamation + vbOKOnly, "PCD Excel — ažuriranje")
+            "Postoje nesacuvane izmene u ovom Excel fajlu." & vbCrLf & vbCrLf & _
+            "Sacuvaj ih pre azuriranja, pa ponovo pokreni proveru.", _
+            vbExclamation + vbOKOnly, "PCD Excel - azuriranje")
         Application.StatusBar = False
         Exit Sub
     End If
@@ -59,28 +59,28 @@ Public Sub CheckForUpdate()
         On Error Resume Next
         Kill tempPath
         On Error GoTo UpdateError
-        Err.Raise vbObjectError + 1004, , "SHA-256 kontrola nije prošla. Nova datoteka nije instalirana."
+        Err.Raise vbObjectError + 1004, , "SHA-256 kontrola nije prosla. Nova datoteka nije instalirana."
     End If
 
     If LCase$(Right$(ThisWorkbook.Name, 5)) <> ".xlsm" Then
-        Err.Raise vbObjectError + 1005, , "Automatsko ažuriranje je podržano za .xlsm fajl."
+        Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
 
     ScheduleReplacement tempPath, ThisWorkbook.FullName
     Application.StatusBar = False
     MsgBox "Nova verzija je preuzeta i proverena." & vbCrLf & vbCrLf & _
-           "Excel će sada zatvoriti staru verziju, zameniti je novom i ponovo je otvoriti.", _
-           vbInformation, "PCD Excel — ažuriranje"
+           "Excel ce sada zatvoriti staru verziju, zameniti je novom i ponovo je otvoriti.", _
+           vbInformation, "PCD Excel - azuriranje"
 
     ThisWorkbook.Close SaveChanges:=False
     Exit Sub
 
 UpdateError:
     Application.StatusBar = False
-    MsgBox "Ažuriranje nije izvršeno." & vbCrLf & vbCrLf & _
+    MsgBox "Azuriranje nije izvrseno." & vbCrLf & vbCrLf & _
            Err.Description & vbCrLf & vbCrLf & _
-           "Možeš nastaviti da koristiš ovu verziju. Ako je korporativna mreža blokirala GitHub, koristi ručno preuzimanje najnovijeg XLSM fajla.", _
-           vbExclamation, "PCD Excel — ažuriranje"
+           "Mozes nastaviti da koristis ovu verziju. Ako je korporativna mreza blokirala GitHub, koristi rucno preuzimanje najnovijeg XLSM fajla.", _
+           vbExclamation, "PCD Excel - azuriranje"
 End Sub
 
 Private Function HttpGetText(ByVal url As String) As String
@@ -92,7 +92,7 @@ Private Function HttpGetText(ByVal url As String) As String
     http.Send
 
     If http.Status < 200 Or http.Status >= 300 Then
-        Err.Raise vbObjectError + 1010, , "GitHub HTTP greška: " & http.Status & " " & http.StatusText
+        Err.Raise vbObjectError + 1010, , "GitHub HTTP greska: " & http.Status & " " & http.StatusText
     End If
 
     HttpGetText = CStr(http.ResponseText)
@@ -144,7 +144,7 @@ Private Function FileSha256(ByVal filePath As String) As String
     shell.Run "cmd.exe /c certutil -hashfile " & QuoteArg(filePath) & " SHA256 > " & QuoteArg(outputPath), 0, True
 
     Set fso = CreateObject("Scripting.FileSystemObject")
-    If Not fso.FileExists(outputPath) Then Err.Raise vbObjectError + 1012, , "Windows nije mogao da izračuna SHA-256."
+    If Not fso.FileExists(outputPath) Then Err.Raise vbObjectError + 1012, , "Windows nije mogao da izracuna SHA-256."
 
     Set ts = fso.OpenTextFile(outputPath, 1, False)
     text = ts.ReadAll
