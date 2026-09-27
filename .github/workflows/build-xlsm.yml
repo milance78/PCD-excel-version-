@@ -54,7 +54,8 @@ jobs:
           FILE="dist/PCD-Excel-Version-$VERSION.xlsm"
           test -f "$FILE"
           cp "$FILE" dist/PCD-Excel-Version-latest.xlsm
-          SHA256=$(sha256sum dist/PCD-Excel-Version-latest.xlsm | cut -d ' ' -f1)
+          cp "$FILE" dist/PCD-Excel-Version-dev.xlsm
+          SHA256=$(sha256sum dist/PCD-Excel-Version-dev.xlsm | cut -d ' ' -f1)
 
           python - <<PY
           import json
@@ -62,7 +63,8 @@ jobs:
           with open(p, encoding="utf-8") as f:
               d=json.load(f)
           d["version"] = "$VERSION"
-          d["artifact"] = "dist/PCD-Excel-Version-latest.xlsm"
+          d["artifact"] = "dist/PCD-Excel-Version-dev.xlsm"
+          d["latest"] = "dist/PCD-Excel-Version-latest.xlsm"
           d["sha256"] = "$SHA256"
           with open(p, "w", encoding="utf-8") as f:
               json.dump(d, f, indent=2, ensure_ascii=False)
@@ -76,6 +78,7 @@ jobs:
           path: |
             dist/PCD-Excel-Version-*.xlsm
             !dist/PCD-Excel-Version-latest.xlsm
+            !dist/PCD-Excel-Version-dev.xlsm
 
       - name: Publish latest XLSM to repository
         run: |
@@ -84,4 +87,4 @@ jobs:
           git add dist/*.xlsm VERSION.json
           git diff --cached --quiet || git commit -m "build: publish real VBA XLSM [skip ci]"
           git pull --rebase origin main
-          git push
+          git push origin HEAD:main
