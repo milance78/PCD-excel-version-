@@ -23,6 +23,10 @@ jobs:
       - name: Compile real VBA project
         run: python build/compile_vba_project.py
 
+      - name: Replace generated VBA with known-good XlsxWriter template
+        run: |
+          curl -L --fail -o build/vbaProject.bin https://raw.githubusercontent.com/jmcnamara/XlsxWriter/main/examples/vbaProject.bin
+
       - name: Build XLSM
         run: python build/build_xlsm.py
 
