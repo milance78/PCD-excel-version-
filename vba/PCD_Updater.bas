@@ -55,11 +55,13 @@ Public Sub CheckForUpdate()
     If Len(tempPath) = 0 Then Err.Raise vbObjectError + 1003, , "Preuzimanje nove verzije nije uspelo."
 
     Application.StatusBar = "PCD Excel: proveravam integritet nove verzije..."
-    If LCase$(FileSha256(tempPath)) <> remoteSha256 Then
+    Dim localSha256 As String
+    localSha256 = LCase$(FileSha256(tempPath))
+    If localSha256 <> remoteSha256 Then
         On Error Resume Next
         Kill tempPath
         On Error GoTo UpdateError
-        Err.Raise vbObjectError + 1004, , "SHA-256 kontrola nije prosla. Nova datoteka nije instalirana."
+        Err.Raise vbObjectError + 1004, , "SHA-256 kontrola nije prosla." & vbCrLf & "Ocekivani: " & remoteSha256 & vbCrLf & "Dobijeni: " & localSha256
     End If
 
     If LCase$(Right$(ThisWorkbook.Name, 5)) <> ".xlsm" Then
