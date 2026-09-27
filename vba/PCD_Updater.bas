@@ -2,7 +2,7 @@ Attribute VB_Name = "PCD_Updater"
 Option Explicit
 
 Private Const VERSION_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json"
-Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-latest.xlsm"
+Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-dev.xlsm"
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
 Public Sub CheckForUpdate()
@@ -109,7 +109,7 @@ Private Function DownloadUpdate(ByVal remoteVersion As String) As String
     On Error GoTo 0
 
     Set http = CreateObject("MSXML2.XMLHTTP.6.0")
-    http.Open "GET", ARTIFACT_URL & "?v=" & Replace(remoteVersion, " ", "%20"), False
+    http.Open "GET", ARTIFACT_URL & "?v=" & Replace(remoteVersion, " ", "%20") & "&t=" & CStr(Timer), False
     http.setRequestHeader "Cache-Control", "no-cache"
     http.Send
 
