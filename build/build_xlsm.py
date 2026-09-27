@@ -1,5 +1,4 @@
 from pathlib import Path
-import urllib.request
 import xlsxwriter
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,10 +9,7 @@ OUTPUT = DIST / f"PCD-Excel-Version-{VERSION}.xlsm"
 VBA_BIN = ROOT / "build" / "vbaProject.bin"
 
 if not VBA_BIN.exists():
-    urllib.request.urlretrieve(
-        "https://raw.githubusercontent.com/jmcnamara/XlsxWriter/main/examples/vbaProject.bin",
-        VBA_BIN,
-    )
+    raise FileNotFoundError("build/vbaProject.bin is missing. Run build/compile_vba_project.py first.")
 
 wb = xlsxwriter.Workbook(str(OUTPUT))
 wb.set_properties({"title": "PCD Excel Version", "comments": "PCD corporate test build 2"})
@@ -66,7 +62,8 @@ magic.set_column("B:H", 20)
 magic.merge_range("A1:H1", "IMPORT INTELLIGENT", title)
 magic.merge_range("A2:H3", "Colle le texte SAFE / NPS / Work Item dans la grande zone ci-dessous.", wb.add_format({"text_wrap": True, "valign": "vcenter", "border": 1, "bg_color": "#FFF2CC"}))
 magic.merge_range("B5:H22", "", wb.add_format({"border": 1, "text_wrap": True, "valign": "top"}))
-magic.write_url("B24", "internal:'Intervention en cours'!A1", link, "Retour")
-magic.write_url("D24", "https://github.com/milance78/PCD-excel-version-/raw/refs/heads/main/dist/PCD-Excel-Version-latest.xlsm", link, "Télécharger la dernière version")
+magic.insert_button("B24", {"macro": "ImportMagicFromSheet", "caption": "Importer", "width": 110, "height": 28})
+magic.write_url("D24", "internal:'Intervention en cours'!A1", link, "Retour")
+magic.write_url("F24", "https://github.com/milance78/PCD-excel-version-/raw/refs/heads/main/dist/PCD-Excel-Version-latest.xlsm", link, "Télécharger la dernière version")
 wb.close()
 print(OUTPUT)
