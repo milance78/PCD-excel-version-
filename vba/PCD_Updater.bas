@@ -85,17 +85,16 @@ End Sub
 
 Private Function HttpGetText(ByVal url As String) As String
     Dim http As Object
-    Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
+    Set http = CreateObject("MSXML2.XMLHTTP.6.0")
     http.Open "GET", url, False
-    http.SetTimeouts UPDATE_TIMEOUT_SECONDS * 1000, UPDATE_TIMEOUT_SECONDS * 1000, UPDATE_TIMEOUT_SECONDS * 1000, UPDATE_TIMEOUT_SECONDS * 1000
-    http.SetRequestHeader "Cache-Control", "no-cache"
+    http.setRequestHeader "Cache-Control", "no-cache"
     http.Send
 
     If http.Status < 200 Or http.Status >= 300 Then
         Err.Raise vbObjectError + 1010, , "GitHub HTTP greska: " & http.Status & " " & http.StatusText
     End If
 
-    HttpGetText = CStr(http.ResponseText)
+    HttpGetText = CStr(http.responseText)
 End Function
 
 Private Function DownloadUpdate(ByVal remoteVersion As String) As String
@@ -103,16 +102,15 @@ Private Function DownloadUpdate(ByVal remoteVersion As String) As String
     Dim stream As Object
     Dim tempPath As String
 
-    tempPath = Environ$("TEMP") & "\PCD-Excel-update-" & Replace(remoteVersion, ".", "_") & ".xlsm"
+    tempPath = Environ$("TEMP") & "PCD-Excel-update-" & Replace(remoteVersion, ".", "_") & ".xlsm"
 
     On Error Resume Next
     Kill tempPath
     On Error GoTo 0
 
-    Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
+    Set http = CreateObject("MSXML2.XMLHTTP.6.0")
     http.Open "GET", ARTIFACT_URL & "?v=" & Replace(remoteVersion, " ", "%20"), False
-    http.SetTimeouts UPDATE_TIMEOUT_SECONDS * 1000, UPDATE_TIMEOUT_SECONDS * 1000, UPDATE_TIMEOUT_SECONDS * 1000, UPDATE_TIMEOUT_SECONDS * 1000
-    http.SetRequestHeader "Cache-Control", "no-cache"
+    http.setRequestHeader "Cache-Control", "no-cache"
     http.Send
 
     If http.Status < 200 Or http.Status >= 300 Then
@@ -122,7 +120,7 @@ Private Function DownloadUpdate(ByVal remoteVersion As String) As String
     Set stream = CreateObject("ADODB.Stream")
     stream.Type = 1
     stream.Open
-    stream.Write http.ResponseBody
+    stream.Write http.responseBody
     stream.SaveToFile tempPath, 2
     stream.Close
 
@@ -138,7 +136,7 @@ Private Function FileSha256(ByVal filePath As String) As String
     Dim matches As Object
     Dim re As Object
 
-    outputPath = Environ$("TEMP") & "\PCD-sha256-" & Format$(Timer * 1000, "0") & ".txt"
+    outputPath = Environ$("TEMP") & "PCD-sha256-" & Format$(Timer * 1000, "0") & ".txt"
 
     Set shell = CreateObject("WScript.Shell")
     shell.Run "cmd.exe /c certutil -hashfile " & QuoteArg(filePath) & " SHA256 > " & QuoteArg(outputPath), 0, True
@@ -231,7 +229,7 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     Dim ts As Object
     Dim shell As Object
 
-    scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
+    scriptPath = Environ$("TEMP") & "PCD-Excel-updater.vbs"
 
     scriptText = _
         "Option Explicit" & vbCrLf & _
