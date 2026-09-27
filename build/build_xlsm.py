@@ -4,7 +4,7 @@ import xlsxwriter
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "0.1.0-corp-test-7-validbase"
+VERSION = "0.1.0-dev-8"
 OUTPUT = DIST / f"PCD-Excel-Version-{VERSION}.xlsm"
 VBA_BIN = ROOT / "build" / "vbaProject.bin"
 
@@ -12,7 +12,7 @@ if not VBA_BIN.exists():
     raise FileNotFoundError("build/vbaProject.bin is missing. Run build/compile_vba_project.py first.")
 
 wb = xlsxwriter.Workbook(str(OUTPUT))
-wb.set_properties({"title": "PCD Excel Version", "comments": "PCD corporate test build 7 - valid VBA base"})
+wb.set_properties({"title": "PCD Excel Version", "comments": "PCD development build 8"})
 wb.set_vba_name("ThisWorkbook")
 main = wb.add_worksheet("Intervention en cours")
 magic = wb.add_worksheet("Magic Import")
@@ -54,7 +54,7 @@ for rng in ["C4:E4", "G4:H4", "C6:E6", "G6:H6", "B10:F10", "B14:E14", "B25:E25"]
 for cell in ["B4","F4","B6","F6","B8","F8","B10","B12","F12","B14","F14","B16","C16","D16","E16","F16","B19","B25","F25"]:
     if cell not in {"B10", "B14", "B25"}:
         main.write(cell, "", value)
-main.write("B28", f"Prêt — {VERSION}", label)
+main.write("B28", f"DEV — {VERSION}", label)
 main.insert_button("F28", {"macro": "CheckForUpdate", "caption": "Proveri ažuriranje", "width": 145, "height": 28})
 
 magic.hide_gridlines(2)
