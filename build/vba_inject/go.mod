@@ -1,0 +1,1 @@
+module pcd-vba-inject\n\ngo 1.23\n\nrequire github.com/kay-ws/ovba-writer v0.0.0-20260922115034-c2e085be54cd\n

@@ -4,7 +4,7 @@ import xlsxwriter
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "0.1.0-corp-test-6-template"
+VERSION = "0.1.0-corp-test-7-validbase"
 OUTPUT = DIST / f"PCD-Excel-Version-{VERSION}.xlsm"
 VBA_BIN = ROOT / "build" / "vbaProject.bin"
 
@@ -12,7 +12,7 @@ if not VBA_BIN.exists():
     raise FileNotFoundError("build/vbaProject.bin is missing. Run build/compile_vba_project.py first.")
 
 wb = xlsxwriter.Workbook(str(OUTPUT))
-wb.set_properties({"title": "PCD Excel Version", "comments": "PCD corporate test build 6 - known-good template"})
+wb.set_properties({"title": "PCD Excel Version", "comments": "PCD corporate test build 7 - valid VBA base"})
 wb.set_vba_name("ThisWorkbook")
 main = wb.add_worksheet("Intervention en cours")
 magic = wb.add_worksheet("Magic Import")

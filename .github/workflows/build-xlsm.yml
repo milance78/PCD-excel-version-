@@ -23,9 +23,14 @@ jobs:
       - name: Compile real VBA project
         run: python build/compile_vba_project.py
 
-      - name: Replace generated VBA with known-good XlsxWriter template
+      - name: Download known-good VBA base
         run: |
           curl -L --fail -o build/vbaProject.bin https://raw.githubusercontent.com/jmcnamara/XlsxWriter/main/examples/vbaProject.bin
+
+      - name: Inject PCD VBA into known-good base
+        run: |
+          cd build/vba_inject
+          go run . ../../build/vbaProject.bin ../../vba/PCD_MagicImport.bas ../../vba/PCD_Updater.bas ../../build/vbaProject.bin
 
       - name: Build XLSM
         run: python build/build_xlsm.py
