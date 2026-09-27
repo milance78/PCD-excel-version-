@@ -100,6 +100,12 @@ func main() {
             if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
                 panic("post-write VBA validation: CheckForUpdate missing")
             }
+            if !strings.Contains(m.Source, "Dim localSha256 As String") {
+                panic("post-write VBA validation: localSha256 diagnostic missing")
+            }
+            if !strings.Contains(m.Source, "Ocekivani:") || !strings.Contains(m.Source, "Dobijeni:") {
+                panic("post-write VBA validation: SHA-256 diagnostic message missing")
+            }
             firstProc := len(m.Source)
             for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
                 if i := strings.Index(m.Source, token); i >= 0 && i < firstProc { firstProc = i }
