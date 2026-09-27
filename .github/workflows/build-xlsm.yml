@@ -28,8 +28,14 @@ jobs:
           curl -L --fail -o build/vbaProject.bin https://raw.githubusercontent.com/jmcnamara/XlsxWriter/main/examples/vbaProject.bin
 
       - name: Inject PCD VBA into known-good base
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.x'
+
+      - name: Run VBA injector
         run: |
           cd build/vba_inject
+          go get github.com/kay-ws/ovba-writer@c2e085be54cd92f75efd52291d6f6b2ceea34c81
           go run . ../../build/vbaProject.bin ../../vba/PCD_MagicImport.bas ../../vba/PCD_Updater.bas ../../build/vbaProject.bin
 
       - name: Build XLSM
