@@ -1,12 +1,13 @@
 {
-  "version": "0.1.0-corp-test-6-template",
+  "version": "0.1.0-dev-8",
   "channel": "development",
   "status": "corporate-test-artifact",
-  "artifact": "dist/PCD-Excel-Version-latest.xlsm",
-  "sha256": "8df7d93b91912d11cd5d107901fd594797c5d4beda40dff397e782ec55b80117",
+  "artifact": "dist/PCD-Excel-Version-dev.xlsm",
+  "sha256": "514d4e30486ebe4c330164cd8624d867774e4035c37cdb2b9550d997fcea4ea4",
   "updateSource": "github-raw",
   "updateEnabled": true,
   "offlineRuntime": true,
   "referenceRepository": "milance78/interventions-pcd",
-  "excelRepository": "milance78/PCD-excel-version-"
+  "excelRepository": "milance78/PCD-excel-version-",
+  "latest": "dist/PCD-Excel-Version-latest.xlsm"
 }
