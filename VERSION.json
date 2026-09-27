@@ -3,7 +3,7 @@
   "channel": "development",
   "status": "corporate-test-artifact",
   "artifact": "dist/PCD-Excel-Version-dev.xlsm",
-  "sha256": "9328496e35dc9d75327ef2dc27d0576d62d6a2f70b761db399b1bb2966b4ccd0",
+  "sha256": "d958a41a245e479cd4dee8865d53344f9ad2bea6c0fccee52240847a09f02d5e",
   "updateSource": "github-raw",
   "updateEnabled": true,
   "offlineRuntime": true,
