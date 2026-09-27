@@ -35,7 +35,8 @@ jobs:
       - name: Run VBA injector
         run: |
           cd build/vba_inject
-          go get github.com/kay-ws/ovba-writer@c2e085be54cd92f75efd52291d6f6b2ceea34c81
+          go get github.com/kay-ws/ovba-writer/vbaproject@c2e085be54cd92f75efd52291d6f6b2ceea34c81
+          go mod tidy
           go run . ../../build/vbaProject.bin ../../vba/PCD_MagicImport.bas ../../vba/PCD_Updater.bas ../../build/vbaProject.bin
 
       - name: Build XLSM
