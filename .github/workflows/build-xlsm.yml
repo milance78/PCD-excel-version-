@@ -89,6 +89,9 @@ jobs:
 
       - name: Publish latest XLSM to repository
         run: |
+          # The injector updates go.mod/go.sum during go mod tidy; those are build-time changes.
+          # Do not let them block the publication commit.
+          git restore -- build/vba_inject/go.mod build/vba_inject/go.sum || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dist/*.xlsm VERSION.json
