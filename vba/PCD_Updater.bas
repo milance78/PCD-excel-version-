@@ -154,7 +154,7 @@ Private Function FileSha256(ByVal filePath As String) As String
     Set re = CreateObject("VBScript.RegExp")
     re.Global = False
     re.IgnoreCase = True
-    re.Pattern = "[0-9A-F]{64}"
+    re.Pattern = """" & key & """" & "\s*:\s*""([^""]*)"""
     Set matches = re.Execute(text)
 
     If matches.Count = 0 Then Err.Raise vbObjectError + 1013, , "Windows nije vratio SHA-256 vrednost."
