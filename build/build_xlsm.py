@@ -55,6 +55,7 @@ for cell in ["B4","F4","B6","F6","B8","F8","B10","B12","F12","B14","F14","B16","
     if cell not in {"B10", "B14", "B25"}:
         main.write(cell, "", value)
 main.write("B28", f"Prêt — {VERSION}", label)
+main.insert_button("F28", {"macro": "CheckForUpdate", "caption": "Proveri ažuriranje", "width": 145, "height": 28})
 
 magic.hide_gridlines(2)
 magic.set_column("A:A", 3)
@@ -64,6 +65,6 @@ magic.merge_range("A2:H3", "Colle le texte SAFE / NPS / Work Item dans la grande
 magic.merge_range("B5:H22", "", wb.add_format({"border": 1, "text_wrap": True, "valign": "top"}))
 magic.insert_button("B24", {"macro": "ImportMagicFromSheet", "caption": "Importer", "width": 110, "height": 28})
 magic.write_url("D24", "internal:'Intervention en cours'!A1", link, "Retour")
-magic.write_url("F24", "https://github.com/milance78/PCD-excel-version-/raw/refs/heads/main/dist/PCD-Excel-Version-latest.xlsm", link, "Télécharger la dernière version")
+magic.write_url("F24", "https://github.com/milance78/PCD-excel-version-/raw/refs/heads/main/dist/PCD-Excel-Version-latest.xlsm", link, "Preuzmi ručno najnoviju verziju")
 wb.close()
 print(OUTPUT)
