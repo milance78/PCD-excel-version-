@@ -17,6 +17,9 @@ if TMP.exists():
 TMP.mkdir(parents=True)
 
 project = VbaProject()
+# The VBA source contains both French and Serbian characters; Windows-1250
+# covers both, so the dir stream and module streams must use the same codepage.
+project.codepage_name = "cp1250"
 project.project_id = "{9E394C0B-697E-4AEE-9FA6-446F51FB30DC}"
 
 
@@ -92,14 +95,14 @@ for module_name in ("PCD_MagicImport", "PCD_Updater"):
     mod.add_file(str(normalized))
     mod.normalize_file()
 
-    # MS-OVBA declares project codepage cp1252 in the dir stream.
+    # MS-OVBA declares the project codepage in the dir stream; we use cp1250.
     # StdModule.normalize_file() reads UTF-8 source, but its .new output is
     # written verbatim into the VBA module stream. Re-encode that normalized
     # source as cp1252 while preserving CRLF line endings before compression.
     normalized_output = Path(str(normalized) + ".new")
     with normalized_output.open("r", encoding="utf-8", newline="") as f:
         normalized_text = f.read()
-    normalized_output.write_bytes(normalized_text.encode("cp1252"))
+    normalized_output.write_bytes(normalized_text.encode("cp1250"))
 
     project.add_module(mod)
 
