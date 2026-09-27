@@ -220,3 +220,10 @@ Public Sub ClearMagicImport()
     ThisWorkbook.Worksheets("Magic Import").Range("B5").ClearContents
     ThisWorkbook.Worksheets("Intervention en cours").Range("B4:F28").ClearContents
 End Sub
+
+
+Public Sub ImportMagicFromSheet()
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Worksheets("Magic Import")
+    ParseMagicImportText CStr(ws.Range("B5").Value), True
+End Sub
