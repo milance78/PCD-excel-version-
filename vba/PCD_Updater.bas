@@ -75,6 +75,7 @@ Public Sub CheckForUpdate()
            vbInformation, "PCD Excel - azuriranje"
 
     Application.DisplayAlerts = False
+    ThisWorkbook.Saved = True
     ThisWorkbook.Close SaveChanges:=False
     Application.Quit
     Exit Sub
