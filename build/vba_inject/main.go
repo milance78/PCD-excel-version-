@@ -42,16 +42,28 @@ func main() {
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
     _ = updaterPath
 
-    // DEV-22 diagnostic: add only the updater module-level constants and a minimal procedure.
+    // DEV-23 diagnostic: add updater constants plus HttpGetText, but do not call it.
     // This isolates whether the updater declarations themselves make Module1 unloadable.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
         "Private Const VERSION_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json\"\r\n" +
         "Private Const ARTIFACT_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-dev.xlsm\"\r\n" +
+        "Private Const UPDATE_TIMEOUT_SECONDS As Long = 30\r\n" +
         magic + "\r\n\r\n" +
         "Public Sub CheckForUpdate()\r\n" +
-        "    MsgBox \"DEV-22: Module1 loads with updater constants.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
-        "End Sub\r\n"
+        "    MsgBox \"DEV-23: Module1 loads with HttpGetText.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "End Sub\r\n\r\n" +
+        "Private Function HttpGetText(ByVal url As String) As String\r\n" +
+        "    Dim http As Object\r\n" +
+        "    Set http = CreateObject(\"MSXML2.XMLHTTP.6.0\")\r\n" +
+        "    http.Open \"GET\", url, False\r\n" +
+        "    http.setRequestHeader \"Cache-Control\", \"no-cache\"\r\n" +
+        "    http.Send\r\n" +
+        "    If http.Status < 200 Or http.Status >= 300 Then\r\n" +
+        "        Err.Raise vbObjectError + 1010, , \"GitHub HTTP greska: \" & http.Status & \" \" & http.StatusText\r\n" +
+        "    End If\r\n" +
+        "    HttpGetText = CStr(http.responseText)\r\n" +
+        "End Function\r\n"
 
     foundModule1, foundSheet2 := false, false
     for i := range p.Modules {
@@ -96,11 +108,11 @@ func main() {
             if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
                 panic("post-write VBA validation: CheckForUpdate stub missing")
             }
-            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") {
-                panic("post-write VBA validation: DEV-22 updater constants missing")
+            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") {
+                panic("post-write VBA validation: DEV-23 updater declarations missing")
             }
             if strings.Contains(m.Source, "Dim localSha256 As String") {
-                panic("post-write VBA validation: full updater code unexpectedly present in DEV-22")
+                panic("post-write VBA validation: full updater code unexpectedly present in DEV-23")
             }
             firstProc := len(m.Source)
             for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
