@@ -69,7 +69,7 @@ jobs:
           unzip -p "$FILE" xl/vbaProject.bin > build/final-vbaProject.bin
           test -s build/final-vbaProject.bin
           cd build/vba_inject
-          go run ./validatecmd ../../final-vbaProject.bin "STIGAO SAM DO SCHEDULE REPLACEMENT"
+          go run ./validatecmd ../../build/final-vbaProject.bin "STIGAO SAM DO SCHEDULE REPLACEMENT"
 
       - name: Publish artifact and checksum
         run: |
