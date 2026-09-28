@@ -55,6 +55,22 @@ jobs:
       - name: Build XLSM
         run: python build/build_xlsm.py
 
+      - name: Validate final XLSM VBA
+        run: |
+          VERSION=$(python - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path("build/build_xlsm.py").read_text(encoding="utf-8")
+          print(re.search(r'VERSION\s*=\s*"([^"]+)"', text).group(1))
+          PY
+          )
+          FILE="dist/PCD-Excel-Version-$VERSION.xlsm"
+          test -f "$FILE"
+          unzip -p "$FILE" xl/vbaProject.bin > build/final-vbaProject.bin
+          test -s build/final-vbaProject.bin
+          cd build/vba_inject
+          go run validate.go ../../final-vbaProject.bin "STIGAO SAM DO SCHEDULE REPLACEMENT"
+
       - name: Publish artifact and checksum
         run: |
           VERSION=$(python - <<'PY'
