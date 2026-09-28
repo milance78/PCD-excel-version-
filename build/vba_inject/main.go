@@ -40,22 +40,16 @@ func main() {
     if err != nil { panic(err) }
 
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
-    updater := stripNameAndOptionExplicit(string(read(updaterPath)))
+    _ = updaterPath
 
-    // VBA requires module-level declarations to appear before the first procedure.
-    // Keep the updater constants at the top of Module1, then append both procedure sets.
-    updaterParts := strings.SplitN(updater, "Public Sub CheckForUpdate()", 2)
-    if len(updaterParts) != 2 {
-        panic("PCD_Updater.bas: CheckForUpdate procedure not found")
-    }
-    updaterDecls := strings.TrimSpace(updaterParts[0])
-    updaterProcedures := "Public Sub CheckForUpdate()" + updaterParts[1]
-
+    // DEV-21 diagnostic: keep Module1 limited to the Magic Import code.
+    // CheckForUpdate is a harmless stub so the workbook button remains callable.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
-        updaterDecls + "\r\n\r\n" +
         magic + "\r\n\r\n" +
-        updaterProcedures + "\r\n"
+        "Public Sub CheckForUpdate()\r\n" +
+        "    MsgBox \"DEV-21: Module1 loads correctly. Updater code is temporarily disabled for diagnosis.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "End Sub\r\n"
 
     foundModule1, foundSheet2 := false, false
     for i := range p.Modules {
@@ -98,13 +92,10 @@ func main() {
                 panic("post-write VBA validation: ImportMagicFromSheet missing")
             }
             if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
-                panic("post-write VBA validation: CheckForUpdate missing")
+                panic("post-write VBA validation: CheckForUpdate stub missing")
             }
-            if !strings.Contains(m.Source, "Dim localSha256 As String") {
-                panic("post-write VBA validation: localSha256 diagnostic missing")
-            }
-            if !strings.Contains(m.Source, "Ocekivani:") || !strings.Contains(m.Source, "Dobijeni:") {
-                panic("post-write VBA validation: SHA-256 diagnostic message missing")
+            if strings.Contains(m.Source, "Dim localSha256 As String") {
+                panic("post-write VBA validation: updater code unexpectedly present in DEV-21")
             }
             firstProc := len(m.Source)
             for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
