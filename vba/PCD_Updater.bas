@@ -229,47 +229,79 @@ End Function
 
 Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)
     Dim scriptPath As String
+    Dim logPath As String
     Dim scriptText As String
     Dim fso As Object
     Dim ts As Object
     Dim shell As Object
 
-    scriptPath = Environ$("TEMP") & "PCD-Excel-updater.vbs"
+    scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
+    logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
 
     scriptText = _
         "Option Explicit" & vbCrLf & _
-        "Dim fso, shell, newFile, oldFile, i" & vbCrLf & _
+        "Dim fso, shell, newFile, oldFile, logPath, i, replaced" & vbCrLf & _
         "Set fso = CreateObject(""Scripting.FileSystemObject"")" & vbCrLf & _
         "Set shell = CreateObject(""WScript.Shell"")" & vbCrLf & _
         "newFile = WScript.Arguments(0)" & vbCrLf & _
         "oldFile = WScript.Arguments(1)" & vbCrLf & _
-        "Dim replaced" & vbCrLf & _
+        "logPath = WScript.Arguments(2)" & vbCrLf & _
         "replaced = False" & vbCrLf & _
+        "LogLine ""START""" & vbCrLf & _
+        "LogLine ""NEW="" & newFile" & vbCrLf & _
+        "LogLine ""OLD="" & oldFile" & vbCrLf & _
         "For i = 1 To 120" & vbCrLf & _
         "  On Error Resume Next" & vbCrLf & _
         "  Err.Clear" & vbCrLf & _
         "  If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True" & vbCrLf & _
         "  If Err.Number = 0 Then" & vbCrLf & _
+        "    LogLine ""DELETE OK attempt="" & i" & vbCrLf & _
         "    Err.Clear" & vbCrLf & _
         "    fso.MoveFile newFile, oldFile" & vbCrLf & _
         "    If Err.Number = 0 Then" & vbCrLf & _
         "      replaced = True" & vbCrLf & _
+        "      LogLine ""MOVE OK attempt="" & i" & vbCrLf & _
         "      Exit For" & vbCrLf & _
+        "    Else" & vbCrLf & _
+        "      LogLine ""MOVE ERROR "" & Err.Number & "" "" & Err.Description" & vbCrLf & _
         "    End If" & vbCrLf & _
+        "  Else" & vbCrLf & _
+        "    LogLine ""DELETE ERROR "" & Err.Number & "" "" & Err.Description" & vbCrLf & _
         "  End If" & vbCrLf & _
         "  Err.Clear" & vbCrLf & _
         "  On Error GoTo 0" & vbCrLf & _
         "  WScript.Sleep 1000" & vbCrLf & _
         "Next" & vbCrLf & _
-        "If replaced Then shell.Run Chr(34) & oldFile & Chr(34), 1, False"
+        "If replaced Then" & vbCrLf & _
+        "  LogLine ""REPLACED OK""" & vbCrLf & _
+        "  LogLine ""LAUNCHING "" & oldFile" & vbCrLf & _
+        "  shell.Run Chr(34) & oldFile & Chr(34), 1, False" & vbCrLf & _
+        "Else" & vbCrLf & _
+        "  LogLine ""REPLACEMENT FAILED after 120 attempts""" & vbCrLf & _
+        "End If" & vbCrLf & _
+        "LogLine ""END""" & vbCrLf & _
+        "Sub LogLine(ByVal message)" & vbCrLf & _
+        "  Dim logFile" & vbCrLf & _
+        "  On Error Resume Next" & vbCrLf & _
+        "  Set logFile = fso.OpenTextFile(logPath, 8, True)" & vbCrLf & _
+        "  logFile.WriteLine Now & "" | "" & message" & vbCrLf & _
+        "  logFile.Close" & vbCrLf & _
+        "End Sub"
 
     Set fso = CreateObject("Scripting.FileSystemObject")
+
+    On Error Resume Next
+    If fso.FileExists(logPath) Then fso.DeleteFile logPath, True
+    On Error GoTo 0
+
     Set ts = fso.CreateTextFile(scriptPath, True, False)
     ts.Write scriptText
     ts.Close
 
     Set shell = CreateObject("WScript.Shell")
-    shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & QuoteArg(newFile) & " " & QuoteArg(oldFile), 0, False
+    shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & _
+              QuoteArg(newFile) & " " & QuoteArg(oldFile) & " " & _
+              QuoteArg(logPath), 0, False
 End Sub
 
 Private Function QuoteArg(ByVal value As String) As String
