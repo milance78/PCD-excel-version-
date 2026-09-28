@@ -22,7 +22,7 @@ Public Sub CheckForUpdate()
     End If
     On Error GoTo UpdateError
 
-    MsgBox "CHECKFORUPDATE IZ DEV-19" & vbCrLf & vbCrLf & _
+    MsgBox "CHECKFORUPDATE IZ DEV-20" & vbCrLf & vbCrLf & _
            "Workbook: " & ThisWorkbook.FullName & vbCrLf & _
            "Version: " & ThisWorkbook.Worksheets("Intervention en cours").Range("H2").Value, _
            vbInformation, "PCD DIJAGNOSTIKA"
