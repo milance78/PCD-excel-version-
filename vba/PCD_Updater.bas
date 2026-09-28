@@ -243,16 +243,25 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
         "Set shell = CreateObject(""WScript.Shell"")" & vbCrLf & _
         "newFile = WScript.Arguments(0)" & vbCrLf & _
         "oldFile = WScript.Arguments(1)" & vbCrLf & _
+        "Dim replaced" & vbCrLf & _
+        "replaced = False" & vbCrLf & _
         "For i = 1 To 120" & vbCrLf & _
         "  On Error Resume Next" & vbCrLf & _
         "  Err.Clear" & vbCrLf & _
-        "  fso.MoveFile newFile, oldFile" & vbCrLf & _
-        "  If Err.Number = 0 Then Exit For" & vbCrLf & _
+        "  If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True" & vbCrLf & _
+        "  If Err.Number = 0 Then" & vbCrLf & _
+        "    Err.Clear" & vbCrLf & _
+        "    fso.MoveFile newFile, oldFile" & vbCrLf & _
+        "    If Err.Number = 0 Then" & vbCrLf & _
+        "      replaced = True" & vbCrLf & _
+        "      Exit For" & vbCrLf & _
+        "    End If" & vbCrLf & _
+        "  End If" & vbCrLf & _
         "  Err.Clear" & vbCrLf & _
         "  On Error GoTo 0" & vbCrLf & _
         "  WScript.Sleep 1000" & vbCrLf & _
         "Next" & vbCrLf & _
-        "If fso.FileExists(oldFile) Then shell.Run Chr(34) & oldFile & Chr(34), 1, False"
+        "If replaced Then shell.Run Chr(34) & oldFile & Chr(34), 1, False"
 
     Set fso = CreateObject("Scripting.FileSystemObject")
     Set ts = fso.CreateTextFile(scriptPath, True, False)
