@@ -42,13 +42,13 @@ func main() {
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
     _ = updaterPath
 
-    // DEV-21 diagnostic: keep Module1 limited to the Magic Import code.
-    // CheckForUpdate is a harmless stub so the workbook button remains callable.
+    // DEV-22 diagnostic: add only the updater module-level constants and a minimal procedure.
+    // This isolates whether the updater declarations themselves make Module1 unloadable.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
         magic + "\r\n\r\n" +
         "Public Sub CheckForUpdate()\r\n" +
-        "    MsgBox \"DEV-21: Module1 loads correctly. Updater code is temporarily disabled for diagnosis.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "    MsgBox \"DEV-22: Module1 loads with updater constants.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
         "End Sub\r\n"
 
     foundModule1, foundSheet2 := false, false
@@ -95,7 +95,7 @@ func main() {
                 panic("post-write VBA validation: CheckForUpdate stub missing")
             }
             if strings.Contains(m.Source, "Dim localSha256 As String") {
-                panic("post-write VBA validation: updater code unexpectedly present in DEV-21")
+                panic("post-write VBA validation: full updater code unexpectedly present in DEV-22")
             }
             firstProc := len(m.Source)
             for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
