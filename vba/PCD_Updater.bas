@@ -242,12 +242,9 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
         "oldFile = WScript.Arguments(1)" & vbCrLf & _
         "For i = 1 To 120" & vbCrLf & _
         "  On Error Resume Next" & vbCrLf & _
-        "  fso.DeleteFile oldFile, True" & vbCrLf & _
-        "  If Err.Number = 0 Then" & vbCrLf & _
-        "    Err.Clear" & vbCrLf & _
-        "    fso.MoveFile newFile, oldFile" & vbCrLf & _
-        "    If Err.Number = 0 Then Exit For" & vbCrLf & _
-        "  End If" & vbCrLf & _
+        "  Err.Clear" & vbCrLf & _
+        "  fso.MoveFile newFile, oldFile" & vbCrLf & _
+        "  If Err.Number = 0 Then Exit For" & vbCrLf & _
         "  Err.Clear" & vbCrLf & _
         "  On Error GoTo 0" & vbCrLf & _
         "  WScript.Sleep 1000" & vbCrLf & _
