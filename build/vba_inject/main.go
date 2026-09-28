@@ -70,7 +70,7 @@ func main() {
         "    Set re = CreateObject(\"VBScript.RegExp\")\r\n" +
         "    re.Global = False\r\n" +
         "    re.IgnoreCase = True\r\n" +
-        "    re.Pattern = \"\"\" & key & \"\"\" & \"\\\\s*:\\\\s*\"\"\"([^\\\"\\\"\\"]*)\"\"\"\r\n" +
+        "    re.Pattern = \"\"\"\" & key & \"\"\"\" & \"\\\\s*:\\\\s*\"\"\"([^\"\"]*)\"\"\"\"\r\n" +
         "    Set matches = re.Execute(json)\r\n" +
         "    If matches.Count > 0 Then JsonValue = matches(0).SubMatches(0)\r\n" +
         "End Function\r\n"
