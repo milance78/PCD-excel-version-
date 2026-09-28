@@ -42,8 +42,8 @@ func main() {
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
     _ = updaterPath
 
-    // DEV-23 diagnostic: add updater constants plus HttpGetText, but do not call it.
-    // This isolates whether the updater declarations themselves make Module1 unloadable.
+    // DEV-24 diagnostic: add updater constants, HttpGetText and JsonValue, but do not call them.
+    // This isolates whether JsonValue or its RegExp code makes Module1 unloadable.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
         "Private Const VERSION_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json\"\r\n" +
@@ -51,7 +51,7 @@ func main() {
         "Private Const UPDATE_TIMEOUT_SECONDS As Long = 30\r\n" +
         magic + "\r\n\r\n" +
         "Public Sub CheckForUpdate()\r\n" +
-        "    MsgBox \"DEV-23: Module1 loads with HttpGetText.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "    MsgBox \"DEV-24: Module1 loads with JsonValue.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
         "End Sub\r\n\r\n" +
         "Private Function HttpGetText(ByVal url As String) As String\r\n" +
         "    Dim http As Object\r\n" +
@@ -63,6 +63,16 @@ func main() {
         "        Err.Raise vbObjectError + 1010, , \"GitHub HTTP greska: \" & http.Status & \" \" & http.StatusText\r\n" +
         "    End If\r\n" +
         "    HttpGetText = CStr(http.responseText)\r\n" +
+        "End Function\r\n\r\n" +
+        "Private Function JsonValue(ByVal json As String, ByVal key As String) As String\r\n" +
+        "    Dim re As Object\r\n" +
+        "    Dim matches As Object\r\n" +
+        "    Set re = CreateObject(\"VBScript.RegExp\")\r\n" +
+        "    re.Global = False\r\n" +
+        "    re.IgnoreCase = True\r\n" +
+        "    re.Pattern = \"\"\" & key & \"\"\" & \"\\\\s*:\\\\s*\"\"\"([^\\\"\\\"\\"]*)\"\"\"\r\n" +
+        "    Set matches = re.Execute(json)\r\n" +
+        "    If matches.Count > 0 Then JsonValue = matches(0).SubMatches(0)\r\n" +
         "End Function\r\n"
 
     foundModule1, foundSheet2 := false, false
@@ -108,11 +118,11 @@ func main() {
             if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
                 panic("post-write VBA validation: CheckForUpdate stub missing")
             }
-            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") {
-                panic("post-write VBA validation: DEV-23 updater declarations missing")
+            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") || !strings.Contains(m.Source, "Private Function JsonValue(ByVal json As String, ByVal key As String)") {
+                panic("post-write VBA validation: DEV-24 updater declarations missing")
             }
             if strings.Contains(m.Source, "Dim localSha256 As String") {
-                panic("post-write VBA validation: full updater code unexpectedly present in DEV-23")
+                panic("post-write VBA validation: full updater code unexpectedly present in DEV-24")
             }
             firstProc := len(m.Source)
             for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
