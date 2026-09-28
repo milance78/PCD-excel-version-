@@ -46,6 +46,8 @@ func main() {
     // This isolates whether the updater declarations themselves make Module1 unloadable.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
+        "Private Const VERSION_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json\"\r\n" +
+        "Private Const ARTIFACT_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-dev.xlsm\"\r\n" +
         magic + "\r\n\r\n" +
         "Public Sub CheckForUpdate()\r\n" +
         "    MsgBox \"DEV-22: Module1 loads with updater constants.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
@@ -93,6 +95,9 @@ func main() {
             }
             if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
                 panic("post-write VBA validation: CheckForUpdate stub missing")
+            }
+            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") {
+                panic("post-write VBA validation: DEV-22 updater constants missing")
             }
             if strings.Contains(m.Source, "Dim localSha256 As String") {
                 panic("post-write VBA validation: full updater code unexpectedly present in DEV-22")
