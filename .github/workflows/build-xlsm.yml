@@ -3,6 +3,11 @@ name: Build PCD Excel XLSM
 
 on:
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force DEV build'
+        required: false
+        default: 'true'
   push:
     branches: [main]
     paths-ignore:
