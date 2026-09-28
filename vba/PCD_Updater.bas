@@ -6,6 +6,27 @@ Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milanc
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
 Public Sub CheckForUpdate()
+    Dim diagPath As String
+    Dim diagFso As Object
+    Dim diagTs As Object
+
+    On Error Resume Next
+    diagPath = Environ$("TEMP") & "\PCD-Excel-checkforupdate.log"
+    Set diagFso = CreateObject("Scripting.FileSystemObject")
+    Set diagTs = diagFso.CreateTextFile(diagPath, True, False)
+    If Not diagTs Is Nothing Then
+        diagTs.WriteLine Now & " | CHECKFORUPDATE START"
+        diagTs.WriteLine "Workbook=" & ThisWorkbook.FullName
+        diagTs.WriteLine "Version=" & CStr(ThisWorkbook.Worksheets("Intervention en cours").Range("H2").Value)
+        diagTs.Close
+    End If
+    On Error GoTo UpdateError
+
+    MsgBox "CHECKFORUPDATE IZ DEV-19" & vbCrLf & vbCrLf & _
+           "Workbook: " & ThisWorkbook.FullName & vbCrLf & _
+           "Version: " & ThisWorkbook.Worksheets("Intervention en cours").Range("H2").Value, _
+           vbInformation, "PCD DIJAGNOSTIKA"
+
     Dim currentVersion As String
     Dim remoteVersion As String
     Dim remoteSha256 As String
