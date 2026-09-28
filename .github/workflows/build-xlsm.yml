@@ -69,7 +69,7 @@ jobs:
           unzip -p "$FILE" xl/vbaProject.bin > build/final-vbaProject.bin
           test -s build/final-vbaProject.bin
           cd build/vba_inject
-          go run ./validatecmd ../../build/final-vbaProject.bin "DEV-22: Module1 loads with updater constants."
+          go run ./validatecmd ../../build/final-vbaProject.bin "DEV-23: Module1 loads with HttpGetText."
 
       - name: Publish artifact and checksum
         run: |
