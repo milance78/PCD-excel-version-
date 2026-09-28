@@ -68,6 +68,11 @@ Public Sub CheckForUpdate()
         Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
 
+    MsgBox "STIGAO SAM DO SCHEDULE REPLACEMENT" & vbCrLf & vbCrLf & _
+           "Temp fajl: " & tempPath & vbCrLf & _
+           "Ciljni fajl: " & ThisWorkbook.FullName, _
+           vbInformation, "PCD DIJAGNOSTIKA"
+
     ScheduleReplacement tempPath, ThisWorkbook.FullName
     Application.StatusBar = False
     MsgBox "Nova verzija je preuzeta i proverena." & vbCrLf & vbCrLf & _
