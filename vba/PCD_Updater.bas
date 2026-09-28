@@ -74,7 +74,9 @@ Public Sub CheckForUpdate()
            "Excel ce sada zatvoriti staru verziju, zameniti je novom i ponovo je otvoriti.", _
            vbInformation, "PCD Excel - azuriranje"
 
+    Application.DisplayAlerts = False
     ThisWorkbook.Close SaveChanges:=False
+    Application.Quit
     Exit Sub
 
 UpdateError:
