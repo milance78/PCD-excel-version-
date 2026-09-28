@@ -237,6 +237,14 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
     logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
 
+    On Error GoTo CreateError
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    On Error Resume Next
+    If fso.FileExists(logPath) Then fso.DeleteFile logPath, True
+    On Error GoTo CreateError
+
     scriptText = _
         "Option Explicit" & vbCrLf & _
         "Dim fso, shell, newFile, oldFile, logPath, i, replaced" & vbCrLf & _
@@ -245,7 +253,6 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
         "newFile = WScript.Arguments(0)" & vbCrLf & _
         "oldFile = WScript.Arguments(1)" & vbCrLf & _
         "logPath = WScript.Arguments(2)" & vbCrLf & _
-        "replaced = False" & vbCrLf & _
         "LogLine ""START""" & vbCrLf & _
         "LogLine ""NEW="" & newFile" & vbCrLf & _
         "LogLine ""OLD="" & oldFile" & vbCrLf & _
@@ -287,20 +294,22 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
         "  logFile.Close" & vbCrLf & _
         "End Sub"
 
-    Set fso = CreateObject("Scripting.FileSystemObject")
-
-    On Error Resume Next
-    If fso.FileExists(logPath) Then fso.DeleteFile logPath, True
-    On Error GoTo 0
-
     Set ts = fso.CreateTextFile(scriptPath, True, False)
     ts.Write scriptText
     ts.Close
+
+    If Not fso.FileExists(scriptPath) Then
+        Err.Raise vbObjectError + 1020, , "Updater nije uspeo da napravi VBS fajl."
+    End If
 
     Set shell = CreateObject("WScript.Shell")
     shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & _
               QuoteArg(newFile) & " " & QuoteArg(oldFile) & " " & _
               QuoteArg(logPath), 0, False
+    Exit Sub
+
+CreateError:
+    Err.Raise vbObjectError + 1021, , "Updater nije uspeo da pripremi eksterni updater." & vbCrLf & Err.Description
 End Sub
 
 Private Function QuoteArg(ByVal value As String) As String
