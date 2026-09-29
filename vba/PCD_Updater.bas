@@ -22,11 +22,6 @@ Public Sub CheckForUpdate()
     End If
     On Error GoTo UpdateError
 
-    MsgBox "CHECKFORUPDATE IZ DEV-20" & vbCrLf & vbCrLf & _
-           "Workbook: " & ThisWorkbook.FullName & vbCrLf & _
-           "Version: " & ThisWorkbook.Worksheets("Intervention en cours").Range("H2").Value, _
-           vbInformation, "PCD DIJAGNOSTIKA"
-
     Dim currentVersion As String
     Dim remoteVersion As String
     Dim remoteSha256 As String
@@ -89,11 +84,6 @@ Public Sub CheckForUpdate()
         Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
 
-    MsgBox "STIGAO SAM DO SCHEDULE REPLACEMENT" & vbCrLf & vbCrLf & _
-           "Temp fajl: " & tempPath & vbCrLf & _
-           "Ciljni fajl: " & ThisWorkbook.FullName, _
-           vbInformation, "PCD DIJAGNOSTIKA"
-
     ScheduleReplacement tempPath, ThisWorkbook.FullName
     Application.StatusBar = False
     MsgBox "Nova verzija je preuzeta i proverena." & vbCrLf & vbCrLf & _
@@ -132,7 +122,7 @@ Private Function DownloadUpdate(ByVal remoteVersion As String) As String
     Dim stream As Object
     Dim tempPath As String
 
-    tempPath = Environ$("TEMP") & "PCD-Excel-update-" & Replace(remoteVersion, ".", "_") & ".xlsm"
+    tempPath = Environ$("TEMP") & "\PCD-Excel-update- & Replace(remoteVersion, ".", "_") & ".xlsm"
 
     On Error Resume Next
     Kill tempPath
@@ -166,7 +156,7 @@ Private Function FileSha256(ByVal filePath As String) As String
     Dim matches As Object
     Dim re As Object
 
-    outputPath = Environ$("TEMP") & "PCD-sha256-" & Format$(Timer * 1000, "0") & ".txt"
+    outputPath = Environ$("TEMP") & "\PCD-sha256- & Format$(Timer * 1000, "0") & ".txt"
 
     Set shell = CreateObject("WScript.Shell")
     shell.Run "cmd.exe /c certutil -hashfile " & QuoteArg(filePath) & " SHA256 > " & QuoteArg(outputPath), 0, True
