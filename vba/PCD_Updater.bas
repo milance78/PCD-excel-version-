@@ -110,7 +110,7 @@ Public Sub CheckForUpdate()
         Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
 
-    ScheduleReplacement tempPath, ThisWorkbook.FullName
+    ScheduleReplacement tempPath, ThisWorkbook.FullName, CurrentExcelProcessId
     Application.StatusBar = False
     MsgBox "Nova verzija je preuzeta i proverena." & vbCrLf & vbCrLf & _
            "Excel ce sada zatvoriti staru verziju, zameniti je novom i ponovo je otvoriti.", _
@@ -287,7 +287,15 @@ Private Function LastNumberAfterDash(ByVal value As String) As Long
     Next i
 End Function
 
-Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)
+Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hwnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+
+Private Function CurrentExcelProcessId() As Long
+    Dim processId As Long
+    GetWindowThreadProcessId Application.Hwnd, processId
+    CurrentExcelProcessId = processId
+End Function
+
+Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String, ByVal processId As Long)
     Dim scriptPath As String
     Dim logPath As String
     Dim backupFile As String
@@ -310,13 +318,26 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     On Error GoTo CreateError
 
     scriptText = "Option Explicit" & vbCrLf
-    AppendVbsLine scriptText, "Dim fso, shell, newFile, oldFile, backupFile, logPath, i, replaced"
+    AppendVbsLine scriptText, "Dim fso, shell, wmi, processes, newFile, oldFile, backupFile, logPath, processId, i, replaced"
     AppendVbsLine scriptText, "Set fso = CreateObject(""Scripting.FileSystemObject"")"
     AppendVbsLine scriptText, "Set shell = CreateObject(""WScript.Shell"")"
     AppendVbsLine scriptText, "newFile = WScript.Arguments(0)"
     AppendVbsLine scriptText, "oldFile = WScript.Arguments(1)"
     AppendVbsLine scriptText, "backupFile = WScript.Arguments(2)"
     AppendVbsLine scriptText, "logPath = WScript.Arguments(3)"
+    AppendVbsLine scriptText, "processId = CLng(WScript.Arguments(4))"
+    AppendVbsLine scriptText, "Set wmi = GetObject(""winmgmts:\\.\root\cimv2"")"
+    AppendVbsLine scriptText, "LogLine ""WAITING FOR EXCEL PID="" & processId"
+    AppendVbsLine scriptText, "For i = 1 To 120"
+    AppendVbsLine scriptText, "  Set processes = wmi.ExecQuery(""SELECT ProcessId FROM Win32_Process WHERE ProcessId="" & processId)"
+    AppendVbsLine scriptText, "  If processes.Count = 0 Then Exit For"
+    AppendVbsLine scriptText, "  WScript.Sleep 1000"
+    AppendVbsLine scriptText, "Next"
+    AppendVbsLine scriptText, "If processes.Count > 0 Then"
+    AppendVbsLine scriptText, "  LogLine ""EXCEL DID NOT EXIT after 120 seconds"""
+    AppendVbsLine scriptText, "  WScript.Quit 2"
+    AppendVbsLine scriptText, "End If"
+    AppendVbsLine scriptText, "WScript.Sleep 1000"
     AppendVbsLine scriptText, "LogLine ""START"""
     AppendVbsLine scriptText, "LogLine ""NEW="" & newFile"
     AppendVbsLine scriptText, "LogLine ""OLD="" & oldFile"
@@ -373,7 +394,8 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     Set shell = CreateObject("WScript.Shell")
     shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & _
               QuoteArg(newFile) & " " & QuoteArg(oldFile) & " " & _
-              QuoteArg(backupFile) & " " & QuoteArg(logPath), 0, False
+              QuoteArg(backupFile) & " " & QuoteArg(logPath) & " " & _
+              CStr(processId), 0, False
     Exit Sub
 
 CreateError:
