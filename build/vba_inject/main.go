@@ -42,8 +42,8 @@ func main() {
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
     _ = updaterPath
 
-    // DEV-25 diagnostic: add version comparison functions, but do not call them.
-    // This isolates whether the version comparison functions make Module1 unloadable.
+    // DEV-26 diagnostic: add DownloadUpdate, but do not call it.
+    // This isolates whether DownloadUpdate and ADODB.Stream make Module1 unloadable.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
         "Private Const VERSION_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json\"\r\n" +
@@ -51,7 +51,7 @@ func main() {
         "Private Const UPDATE_TIMEOUT_SECONDS As Long = 30\r\n" +
         magic + "\r\n\r\n" +
         "Public Sub CheckForUpdate()\r\n" +
-        "    MsgBox \"DEV-25: Module1 loads with version comparison functions.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "    MsgBox \"DEV-26: Module1 loads with DownloadUpdate.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
         "End Sub\r\n\r\n" +
         "Private Function HttpGetText(ByVal url As String) As String\r\n" +
         "    Dim http As Object\r\n" +
@@ -113,6 +113,29 @@ func main() {
         "            Exit Function\r\n" +
         "        End If\r\n" +
         "    Next i\r\n" +
+        "End Function\r\n\r\n" +
+        "Private Function DownloadUpdate(ByVal remoteVersion As String) As String\r\n" +
+        "    Dim http As Object\r\n" +
+        "    Dim stream As Object\r\n" +
+        "    Dim tempPath As String\r\n" +
+        "    tempPath = Environ$(\"TEMP\") & \"PCD-Excel-update-\" & Replace(remoteVersion, \".\", \"_\") & \".xlsm\"\r\n" +
+        "    On Error Resume Next\r\n" +
+        "    Kill tempPath\r\n" +
+        "    On Error GoTo 0\r\n" +
+        "    Set http = CreateObject(\"MSXML2.XMLHTTP.6.0\")\r\n" +
+        "    http.Open \"GET\", ARTIFACT_URL & \"?v=\" & Replace(remoteVersion, \" \", \"%20\") & \"&t=\" & CStr(Timer), False\r\n" +
+        "    http.setRequestHeader \"Cache-Control\", \"no-cache\"\r\n" +
+        "    http.Send\r\n" +
+        "    If http.Status < 200 Or http.Status >= 300 Then\r\n" +
+        "        Err.Raise vbObjectError + 1011, , \"Preuzimanje XLSM fajla nije uspelo: HTTP \" & http.Status\r\n" +
+        "    End If\r\n" +
+        "    Set stream = CreateObject(\"ADODB.Stream\")\r\n" +
+        "    stream.Type = 1\r\n" +
+        "    stream.Open\r\n" +
+        "    stream.Write http.responseBody\r\n" +
+        "    stream.SaveToFile tempPath, 2\r\n" +
+        "    stream.Close\r\n" +
+        "    DownloadUpdate = tempPath\r\n" +
         "End Function\r\n"
 
     foundModule1, foundSheet2 := false, false
@@ -158,11 +181,11 @@ func main() {
             if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
                 panic("post-write VBA validation: CheckForUpdate stub missing")
             }
-            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") || !strings.Contains(m.Source, "Private Function JsonValue(ByVal json As String, ByVal key As String)") || !strings.Contains(m.Source, "Private Function CompareVersions(ByVal a As String, ByVal b As String)") {
-                panic("post-write VBA validation: DEV-25 updater declarations missing")
+            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") || !strings.Contains(m.Source, "Private Function JsonValue(ByVal json As String, ByVal key As String)") || !strings.Contains(m.Source, "Private Function CompareVersions(ByVal a As String, ByVal b As String)") || !strings.Contains(m.Source, "Private Function DownloadUpdate(ByVal remoteVersion As String)") {
+                panic("post-write VBA validation: DEV-26 updater declarations missing")
             }
             if strings.Contains(m.Source, "Dim localSha256 As String") {
-                panic("post-write VBA validation: full updater code unexpectedly present in DEV-25")
+                panic("post-write VBA validation: full updater code unexpectedly present in DEV-26")
             }
             firstProc := len(m.Source)
             for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
