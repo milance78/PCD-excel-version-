@@ -25,15 +25,21 @@ Public Sub CheckForUpdate()
     Dim currentVersion As String
     Dim remoteVersion As String
     Dim remoteSha256 As String
+    Dim manifestText As String
     Dim tempPath As String
     Dim answer As VbMsgBoxResult
+    Dim localSha256 As String
+    Dim cacheBust As String
+    Dim attempt As Long
 
     currentVersion = Trim$(CStr(ThisWorkbook.Worksheets("Intervention en cours").Range("H2").Value))
     If Len(currentVersion) = 0 Then currentVersion = "0.0.0"
 
     Application.StatusBar = "PCD Excel: proveravam novu verziju..."
-    remoteVersion = JsonValue(HttpGetText(VERSION_URL & "?t=" & CStr(Timer)), "version")
-    remoteSha256 = LCase$(JsonValue(HttpGetText(VERSION_URL & "?t=" & CStr(Timer + 1)), "sha256"))
+    cacheBust = Format$(Now, "yyyymmddhhnnss") & "-" & Format$(Timer * 1000, "0")
+    manifestText = HttpGetText(VERSION_URL & "?pcd=" & cacheBust)
+    remoteVersion = JsonValue(manifestText, "version")
+    remoteSha256 = LCase$(JsonValue(manifestText, "sha256"))
 
     If Len(remoteVersion) = 0 Then Err.Raise vbObjectError + 1001, , "GitHub nije vratio broj verzije."
     If Len(remoteSha256) <> 64 Then Err.Raise vbObjectError + 1002, , "GitHub nije vratio ispravan SHA-256."
@@ -65,16 +71,38 @@ Public Sub CheckForUpdate()
         Exit Sub
     End If
 
-    tempPath = DownloadUpdate(remoteVersion)
-    If Len(tempPath) = 0 Then Err.Raise vbObjectError + 1003, , "Preuzimanje nove verzije nije uspelo."
+    Application.StatusBar = "PCD Excel: preuzimam i proveravam novu verziju..."
+    tempPath = vbNullString
+    localSha256 = vbNullString
 
-    Application.StatusBar = "PCD Excel: proveravam integritet nove verzije..."
-    Dim localSha256 As String
-    localSha256 = LCase$(FileSha256(tempPath))
-    If localSha256 <> remoteSha256 Then
+    For attempt = 1 To 3
+        cacheBust = Format$(Now, "yyyymmddhhnnss") & "-" & Format$(Timer * 1000, "0") & "-" & CStr(attempt)
+        manifestText = HttpGetText(VERSION_URL & "?pcd=" & cacheBust)
+        remoteVersion = JsonValue(manifestText, "version")
+        remoteSha256 = LCase$(JsonValue(manifestText, "sha256"))
+
+        If Len(remoteVersion) = 0 Or Len(remoteSha256) <> 64 Then
+            Err.Raise vbObjectError + 1002, , "GitHub nije vratio ispravan update manifest."
+        End If
+
+        tempPath = DownloadUpdate(remoteVersion, cacheBust)
+        If Len(tempPath) = 0 Then Err.Raise vbObjectError + 1003, , "Preuzimanje nove verzije nije uspelo."
+
+        localSha256 = LCase$(FileSha256(tempPath))
+
+        If localSha256 = remoteSha256 Then Exit For
+
         On Error Resume Next
         Kill tempPath
         On Error GoTo UpdateError
+
+        If attempt < 3 Then
+            Application.StatusBar = "PCD Excel: osvezavam objavljenu verziju..."
+            Application.Wait Now + TimeValue("0:00:02")
+        End If
+    Next attempt
+
+    If localSha256 <> remoteSha256 Then
         Err.Raise vbObjectError + 1004, , "SHA-256 kontrola nije prosla." & vbCrLf & "Ocekivani: " & remoteSha256 & vbCrLf & "Dobijeni: " & localSha256
     End If
 
@@ -106,6 +134,8 @@ Private Function HttpGetText(ByVal url As String) As String
     Set http = CreateObject("MSXML2.XMLHTTP.6.0")
     http.Open "GET", url, False
     http.setRequestHeader "Cache-Control", "no-cache"
+    http.setRequestHeader "Pragma", "no-cache"
+    http.setRequestHeader "If-Modified-Since", "Sat, 01 Jan 2000 00:00:00 GMT"
     http.Send
 
     If http.Status < 200 Or http.Status >= 300 Then
@@ -115,7 +145,7 @@ Private Function HttpGetText(ByVal url As String) As String
     HttpGetText = CStr(http.responseText)
 End Function
 
-Private Function DownloadUpdate(ByVal remoteVersion As String) As String
+Private Function DownloadUpdate(ByVal remoteVersion As String, ByVal cacheBust As String) As String
     Dim http As Object
     Dim stream As Object
     Dim tempPath As String
@@ -127,8 +157,10 @@ Private Function DownloadUpdate(ByVal remoteVersion As String) As String
     On Error GoTo 0
 
     Set http = CreateObject("MSXML2.XMLHTTP.6.0")
-    http.Open "GET", ARTIFACT_URL & "?v=" & Replace(remoteVersion, " ", "%20") & "&t=" & CStr(Timer), False
+    http.Open "GET", ARTIFACT_URL & "?v=" & Replace(remoteVersion, " ", "%20") & "&pcd=" & cacheBust, False
     http.setRequestHeader "Cache-Control", "no-cache"
+    http.setRequestHeader "Pragma", "no-cache"
+    http.setRequestHeader "If-Modified-Since", "Sat, 01 Jan 2000 00:00:00 GMT"
     http.Send
 
     If http.Status < 200 Or http.Status >= 300 Then
@@ -317,7 +349,7 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     AppendVbsLine scriptText, "  If fso.FileExists(backupFile) Then fso.DeleteFile backupFile, True"
     AppendVbsLine scriptText, "  LogLine ""LAUNCHING "" & oldFile"
     AppendVbsLine scriptText, "  WScript.Sleep 1500"
-    AppendVbsLine scriptText, "  shell.Run """""" & oldFile & """""", 1, False"
+    AppendVbsLine scriptText, "  shell.Run Chr(34) & oldFile & Chr(34), 1, False"
     AppendVbsLine scriptText, "Else"
     AppendVbsLine scriptText, "  LogLine ""REPLACEMENT FAILED after 120 attempts"""
     AppendVbsLine scriptText, "End If"
