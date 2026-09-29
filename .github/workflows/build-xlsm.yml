@@ -74,7 +74,7 @@ jobs:
           unzip -p "$FILE" xl/vbaProject.bin > build/final-vbaProject.bin
           test -s build/final-vbaProject.bin
           cd build/vba_inject
-          go run ./validatecmd ../../build/final-vbaProject.bin "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)"
+          go run ./validatecmd ../../build/final-vbaProject.bin "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String, ByVal processId As Long)"
 
       - name: Publish artifact and checksum
         run: |
