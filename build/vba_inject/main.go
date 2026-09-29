@@ -208,7 +208,6 @@ func main() {
         "    On Error GoTo CreateError\r\n" +
         "\r\n" +
         "    scriptText = \"Option Explicit\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"Option Explicit\" & vbCrLf\r\n" +
         "    scriptText = scriptText & \"Dim fso, shell, newFile, oldFile, logPath, i, replaced\" & vbCrLf\r\n" +
         "    scriptText = scriptText & \"Set fso = CreateObject(\"\"Scripting.FileSystemObject\"\")\" & vbCrLf\r\n" +
         "    scriptText = scriptText & \"Set shell = CreateObject(\"\"WScript.Shell\"\")\" & vbCrLf\r\n" +
