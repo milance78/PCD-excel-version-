@@ -338,7 +338,7 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     AppendVbsLine scriptText, "  If Err.Number = 0 Then"
     AppendVbsLine scriptText, "    LogLine ""BACKUP OK attempt="" & i"
     AppendVbsLine scriptText, "    Err.Clear"
-    AppendVbsLine scriptText, "    fso.MoveFile newFile, oldFile"
+    AppendVbsLine scriptText, "    fso.CopyFile newFile, oldFile, True"
     AppendVbsLine scriptText, "    If Err.Number = 0 Then"
     AppendVbsLine scriptText, "      replaced = True"
     AppendVbsLine scriptText, "      LogLine ""MOVE OK attempt="" & i"
