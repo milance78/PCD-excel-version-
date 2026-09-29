@@ -55,7 +55,7 @@ jobs:
       - name: VBA pre-flight syntax check
         run: |
           cd build/vba_inject
-          go run ./validatecmd ../../build/vbaProject.bin "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)"
+          go run ./validatecmd ../../build/vbaProject.bin "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String, ByVal processId As Long)"
 
       - name: Build XLSM
         run: python build/build_xlsm.py
