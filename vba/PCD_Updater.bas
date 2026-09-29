@@ -324,11 +324,14 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     If fso.FileExists(backupFile) Then fso.DeleteFile backupFile, True
     On Error GoTo CreateError
 
-    ' VBS only launches the detached CMD. The CMD owns the replacement loop.
+    ' VBS launches the detached CMD and passes every replacement argument to it.
     scriptText = "Option Explicit" & vbCrLf
     AppendVbsLine scriptText, "Dim shell"
     AppendVbsLine scriptText, "Set shell = CreateObject(""WScript.Shell"")"
-    AppendVbsLine scriptText, "shell.Run ""cmd.exe /c "" & Chr(34) & WScript.Arguments(0) & Chr(34), 0, False"
+    AppendVbsLine scriptText, "shell.Run ""cmd.exe /c call "" & Q(WScript.Arguments(0)) & "" "" & Q(WScript.Arguments(1)) & "" "" & Q(WScript.Arguments(2)) & "" "" & Q(WScript.Arguments(3)) & "" "" & Q(WScript.Arguments(4)), 0, False"
+    AppendVbsLine scriptText, "Function Q(ByVal value)"
+    AppendVbsLine scriptText, "Q = Chr(34) & Replace(value, Chr(34), Chr(34) & Chr(34)) & Chr(34)"
+    AppendVbsLine scriptText, "End Function"
 
     Set ts = fso.CreateTextFile(scriptPath, True, False)
     ts.Write scriptText
