@@ -108,7 +108,10 @@ func validateModule1(source string, required string) {
     }
 
     checkVBAStrings("Module1", source)
+    checkVBAContinuationRules("Module1", source)
     checkProcedureBlocks("Module1", source)
+    checkVBABlockStructure("Module1", source)
+    validateEmbeddedVBScript("Module1", source)
 }
 
 func main() {
@@ -137,7 +140,9 @@ func main() {
         case "Sheet2":
             foundSheet2 = true
             checkVBAStrings("Sheet2", m.Source)
+            checkVBAContinuationRules("Sheet2", m.Source)
             checkProcedureBlocks("Sheet2", m.Source)
+            checkVBABlockStructure("Sheet2", m.Source)
         }
     }
 
