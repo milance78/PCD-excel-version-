@@ -55,7 +55,7 @@ jobs:
       - name: VBA pre-flight syntax check
         run: |
           cd build/vba_inject
-          go run ./validatecmd ../../build/vbaProject.bin "DEV-29: ScheduleReplacement je pozvan."
+          go run ./validatecmd ../../build/vbaProject.bin "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)"
 
       - name: Build XLSM
         run: python build/build_xlsm.py
@@ -74,7 +74,7 @@ jobs:
           unzip -p "$FILE" xl/vbaProject.bin > build/final-vbaProject.bin
           test -s build/final-vbaProject.bin
           cd build/vba_inject
-          go run ./validatecmd ../../build/final-vbaProject.bin "DEV-29: ScheduleReplacement je pozvan."
+          go run ./validatecmd ../../build/final-vbaProject.bin "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)"
 
       - name: Publish artifact and checksum
         run: |
