@@ -67,7 +67,26 @@ func main() {
         magic + "\r\n\r\n" +
 
         "Public Sub CheckForUpdate()\r\n" +
-        "    MsgBox \"DEV-28.1: Module1 loads with split ScheduleReplacement scriptText.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "    Dim fso As Object\r\n" +
+        "    Dim newFile As String\r\n" +
+        "    Dim oldFile As String\r\n" +
+        "    newFile = Environ$(\"TEMP\") & \"\\PCD-SR-test-new.txt\"\r\n" +
+        "    oldFile = Environ$(\"TEMP\") & \"\\PCD-SR-test-old.txt\"\r\n" +
+        "    Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n" +
+        "    On Error Resume Next\r\n" +
+        "    If fso.FileExists(newFile) Then fso.DeleteFile newFile, True\r\n" +
+        "    If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True\r\n" +
+        "    On Error GoTo 0\r\n" +
+        "    With fso.CreateTextFile(newFile, True, False)\r\n" +
+        "        .WriteLine \"DEV-29 NEW FILE\"\r\n" +
+        "        .Close\r\n" +
+        "    End With\r\n" +
+        "    With fso.CreateTextFile(oldFile, True, False)\r\n" +
+        "        .WriteLine \"DEV-29 OLD FILE\"\r\n" +
+        "        .Close\r\n" +
+        "    End With\r\n" +
+        "    ScheduleReplacement newFile, oldFile\r\n" +
+        "    MsgBox \"DEV-29: ScheduleReplacement je pozvan.\r\n\r\nLog: \" & Environ$(\"TEMP\") & \"\\PCD-Excel-updater.log\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
         "End Sub\r\n\r\n" +
 
         "Private Function HttpGetText(ByVal url As String) As String\r\n" +
