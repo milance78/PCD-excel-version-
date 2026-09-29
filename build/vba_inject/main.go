@@ -180,7 +180,7 @@ func main() {
                 ) ||
                 !strings.Contains(
                     m.Source,
-                    "Private Function DownloadUpdate(ByVal remoteVersion As String)",
+                    "Private Function DownloadUpdate(ByVal remoteVersion As String, ByVal cacheBust As String)",
                 ) ||
                 !strings.Contains(
                     m.Source,
@@ -195,7 +195,7 @@ func main() {
                     "Private Function QuoteArg(ByVal value As String)",
                 ) {
                 panic(
-                    "post-write VBA validation: DEV-28 updater declarations missing",
+                    "post-write VBA validation: production updater declarations missing",
                 )
             }
 
