@@ -52,6 +52,11 @@ jobs:
           go mod tidy
           go run . ../../build/vbaProject.bin ../../vba/PCD_MagicImport.bas ../../vba/PCD_Updater.bas ../../build/vbaProject.bin
 
+      - name: VBA pre-flight syntax check
+        run: |
+          cd build/vba_inject
+          go run ./validatecmd ../../build/vbaProject.bin "DEV-29: ScheduleReplacement je pozvan."
+
       - name: Build XLSM
         run: python build/build_xlsm.py
 
