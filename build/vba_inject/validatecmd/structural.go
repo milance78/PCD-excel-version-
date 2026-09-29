@@ -191,49 +191,64 @@ func checkVBABlockStructure(moduleName, source string) {
 }
 
 func validateEmbeddedVBScript(moduleName, source string) {
-	// ScheduleReplacement creates VBScript one source line at a time:
-	//     scriptText = scriptText & "..." & vbCrLf
-	// Reconstruct the static fragments and validate their block structure.
+	// ScheduleReplacement builds one VBScript source line per VBA string
+	// literal, starting with "scriptText = _" and continuing on subsequent
+	// VBA continuation lines. Reconstruct all string literals in that block.
+	lines := strings.Split(strings.ReplaceAll(source, "\r\n", "\n"), "\n")
 	var fragments []string
+	collecting := false
 
-	for _, raw := range strings.Split(strings.ReplaceAll(source, "\r\n", "\n"), "\n") {
+	for _, raw := range lines {
 		t := strings.TrimSpace(raw)
-		if !strings.HasPrefix(strings.ToLower(t), "scripttext =") {
-			continue
+
+		if !collecting {
+			if strings.HasPrefix(strings.ToLower(t), "scripttext =") {
+				collecting = true
+			} else {
+				continue
+			}
 		}
 
-		firstQuote := strings.IndexByte(t, '"')
-		if firstQuote < 0 {
-			continue
+		if collecting && strings.HasPrefix(strings.ToLower(t), "set ts =") {
+			break
 		}
 
-		var b strings.Builder
-		inString := false
-
-		for i := firstQuote; i < len(t); i++ {
-			c := t[i]
-
-			if !inString {
-				if c == '"' {
-					inString = true
-				}
+		for i := 0; i < len(raw); {
+			if raw[i] != '"' {
+				i++
 				continue
 			}
 
-			if c == '"' {
-				if i+1 < len(t) && t[i+1] == '"' {
-					b.WriteByte('"')
+			i++
+			var b strings.Builder
+			closed := false
+
+			for i < len(raw) {
+				if raw[i] == '"' {
+					if i+1 < len(raw) && raw[i+1] == '"' {
+						b.WriteByte('"')
+						i += 2
+						continue
+					}
 					i++
-					continue
+					closed = true
+					break
 				}
-
-				fragments = append(fragments, b.String())
-				b.Reset()
-				inString = false
-				continue
+				b.WriteByte(raw[i])
+				i++
 			}
 
-			b.WriteByte(c)
+			if !closed {
+				fail(fmt.Sprintf("%s: unterminated VBA string while reconstructing embedded VBScript", moduleName))
+			}
+
+			fragments = append(fragments, b.String())
+		}
+
+		masked := strings.TrimSpace(maskForStructure(raw))
+		if collecting && masked != "" && !strings.HasSuffix(masked, "_") &&
+			!strings.HasPrefix(strings.ToLower(t), "scripttext =") {
+			break
 		}
 	}
 
@@ -242,7 +257,7 @@ func validateEmbeddedVBScript(moduleName, source string) {
 	}
 
 	vbs := strings.Join(fragments, "\n")
-	lines := strings.Split(vbs, "\n")
+	vbsLines := strings.Split(vbs, "\n")
 
 	type vbsFrame struct {
 		kind string
@@ -251,7 +266,7 @@ func validateEmbeddedVBScript(moduleName, source string) {
 
 	stack := make([]vbsFrame, 0)
 
-	for i, raw := range lines {
+	for i, raw := range vbsLines {
 		lineNo := i + 1
 		line := strings.TrimSpace(raw)
 
@@ -261,33 +276,27 @@ func validateEmbeddedVBScript(moduleName, source string) {
 
 		l := strings.ToLower(line)
 
-		if strings.HasPrefix(l, "if ") &&
-			strings.HasSuffix(l, " then") {
+		if strings.HasPrefix(l, "if ") && strings.HasSuffix(l, " then") {
 			stack = append(stack, vbsFrame{"If", lineNo})
 		}
-
 		if strings.HasPrefix(l, "for ") {
 			stack = append(stack, vbsFrame{"For", lineNo})
 		}
-
 		if l == "do" || strings.HasPrefix(l, "do ") {
 			stack = append(stack, vbsFrame{"Do", lineNo})
 		}
-
 		if strings.HasPrefix(l, "end if") {
 			if len(stack) == 0 || stack[len(stack)-1].kind != "If" {
 				fail(fmt.Sprintf("%s generated VBScript line %d: unexpected End If", moduleName, lineNo))
 			}
 			stack = stack[:len(stack)-1]
 		}
-
 		if strings.HasPrefix(l, "next") {
 			if len(stack) == 0 || stack[len(stack)-1].kind != "For" {
 				fail(fmt.Sprintf("%s generated VBScript line %d: unexpected Next", moduleName, lineNo))
 			}
 			stack = stack[:len(stack)-1]
 		}
-
 		if strings.HasPrefix(l, "loop") {
 			if len(stack) == 0 || stack[len(stack)-1].kind != "Do" {
 				fail(fmt.Sprintf("%s generated VBScript line %d: unexpected Loop", moduleName, lineNo))
@@ -298,9 +307,6 @@ func validateEmbeddedVBScript(moduleName, source string) {
 
 	if len(stack) != 0 {
 		top := stack[len(stack)-1]
-		fail(fmt.Sprintf(
-			"%s generated VBScript: unclosed %s block opened at generated line %d",
-			moduleName, top.kind, top.line,
-		))
+		fail(fmt.Sprintf("%s generated VBScript: unclosed %s block opened at generated line %d", moduleName, top.kind, top.line))
 	}
 }
