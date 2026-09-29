@@ -198,7 +198,7 @@ Private Function JsonValue(ByVal json As String, ByVal key As String) As String
     Set re = CreateObject("VBScript.RegExp")
     re.Global = False
     re.IgnoreCase = True
-    re.Pattern = """" & key & """" & "\s*:\s*""([^""]*)"""
+    re.Pattern = Chr(34) & key & Chr(34) & "\s*:\s*" & Chr(34) & "([^" & Chr(34) & "]*)" & Chr(34)
     Set matches = re.Execute(json)
 
     If matches.Count > 0 Then JsonValue = matches(0).SubMatches(0)
@@ -339,5 +339,5 @@ CreateError:
 End Sub
 
 Private Function QuoteArg(ByVal value As String) As String
-    QuoteArg = """" & Replace(value, """", """""") & """"
+    QuoteArg = Chr(34) & Replace(value, Chr(34), Chr(34) & Chr(34)) & Chr(34)
 End Function
