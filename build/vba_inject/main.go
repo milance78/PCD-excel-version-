@@ -293,7 +293,7 @@ func main() {
         "End Sub\r\n\r\n" +
 
         "Private Function QuoteArg(ByVal value As String) As String\r\n" +
-        "    QuoteArg = \"\"\"\" & Replace(value, \"\"\"\", \"\"\"\"\") & \"\"\"\"\r\n" +
+        "    QuoteArg = Chr(34) & Replace(value, Chr(34), Chr(34) & Chr(34)) & Chr(34)\r\n" +
         "End Function\r\n"
 
     foundModule1, foundSheet2 := false, false
