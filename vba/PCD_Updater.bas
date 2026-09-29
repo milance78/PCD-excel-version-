@@ -28,8 +28,6 @@ Public Sub CheckForUpdate()
     Dim tempPath As String
     Dim answer As VbMsgBoxResult
 
-    On Error GoTo UpdateError
-
     currentVersion = Trim$(CStr(ThisWorkbook.Worksheets("Intervention en cours").Range("H2").Value))
     If Len(currentVersion) = 0 Then currentVersion = "0.0.0"
 
@@ -260,6 +258,7 @@ End Function
 Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)
     Dim scriptPath As String
     Dim logPath As String
+    Dim backupFile As String
     Dim scriptText As String
     Dim fso As Object
     Dim ts As Object
@@ -267,6 +266,7 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
 
     scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
     logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
+    backupFile = oldFile & ".pcd-old"
 
     On Error GoTo CreateError
 
@@ -274,24 +274,26 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
 
     On Error Resume Next
     If fso.FileExists(logPath) Then fso.DeleteFile logPath, True
+    If fso.FileExists(backupFile) Then fso.DeleteFile backupFile, True
     On Error GoTo CreateError
 
     scriptText = "Option Explicit" & vbCrLf
-    AppendVbsLine scriptText, "Dim fso, shell, newFile, oldFile, logPath, i, replaced"
+    AppendVbsLine scriptText, "Dim fso, shell, newFile, oldFile, backupFile, logPath, i, replaced"
     AppendVbsLine scriptText, "Set fso = CreateObject(""Scripting.FileSystemObject"")"
     AppendVbsLine scriptText, "Set shell = CreateObject(""WScript.Shell"")"
     AppendVbsLine scriptText, "newFile = WScript.Arguments(0)"
     AppendVbsLine scriptText, "oldFile = WScript.Arguments(1)"
-    AppendVbsLine scriptText, "logPath = WScript.Arguments(2)"
+    AppendVbsLine scriptText, "backupFile = WScript.Arguments(2)"
+    AppendVbsLine scriptText, "logPath = WScript.Arguments(3)"
     AppendVbsLine scriptText, "LogLine ""START"""
     AppendVbsLine scriptText, "LogLine ""NEW="" & newFile"
     AppendVbsLine scriptText, "LogLine ""OLD="" & oldFile"
     AppendVbsLine scriptText, "For i = 1 To 120"
     AppendVbsLine scriptText, "  On Error Resume Next"
     AppendVbsLine scriptText, "  Err.Clear"
-    AppendVbsLine scriptText, "  If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True"
+    AppendVbsLine scriptText, "  If fso.FileExists(oldFile) Then fso.MoveFile oldFile, backupFile"
     AppendVbsLine scriptText, "  If Err.Number = 0 Then"
-    AppendVbsLine scriptText, "    LogLine ""DELETE OK attempt="" & i"
+    AppendVbsLine scriptText, "    LogLine ""BACKUP OK attempt="" & i"
     AppendVbsLine scriptText, "    Err.Clear"
     AppendVbsLine scriptText, "    fso.MoveFile newFile, oldFile"
     AppendVbsLine scriptText, "    If Err.Number = 0 Then"
@@ -300,9 +302,11 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     AppendVbsLine scriptText, "      Exit For"
     AppendVbsLine scriptText, "    Else"
     AppendVbsLine scriptText, "      LogLine ""MOVE ERROR "" & Err.Number & "" "" & Err.Description"
+    AppendVbsLine scriptText, "      Err.Clear"
+    AppendVbsLine scriptText, "      If fso.FileExists(backupFile) And Not fso.FileExists(oldFile) Then fso.MoveFile backupFile, oldFile"
     AppendVbsLine scriptText, "    End If"
     AppendVbsLine scriptText, "  Else"
-    AppendVbsLine scriptText, "    LogLine ""DELETE ERROR "" & Err.Number & "" "" & Err.Description"
+    AppendVbsLine scriptText, "    LogLine ""BACKUP ERROR "" & Err.Number & "" "" & Err.Description"
     AppendVbsLine scriptText, "  End If"
     AppendVbsLine scriptText, "  Err.Clear"
     AppendVbsLine scriptText, "  On Error GoTo 0"
@@ -310,8 +314,10 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     AppendVbsLine scriptText, "Next"
     AppendVbsLine scriptText, "If replaced Then"
     AppendVbsLine scriptText, "  LogLine ""REPLACED OK"""
+    AppendVbsLine scriptText, "  If fso.FileExists(backupFile) Then fso.DeleteFile backupFile, True"
     AppendVbsLine scriptText, "  LogLine ""LAUNCHING "" & oldFile"
-    AppendVbsLine scriptText, "  shell.Run Chr(34) & oldFile & Chr(34), 1, False"
+    AppendVbsLine scriptText, "  WScript.Sleep 1500"
+    AppendVbsLine scriptText, "  shell.Run """""" & oldFile & """""", 1, False"
     AppendVbsLine scriptText, "Else"
     AppendVbsLine scriptText, "  LogLine ""REPLACEMENT FAILED after 120 attempts"""
     AppendVbsLine scriptText, "End If"
@@ -335,7 +341,7 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     Set shell = CreateObject("WScript.Shell")
     shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & _
               QuoteArg(newFile) & " " & QuoteArg(oldFile) & " " & _
-              QuoteArg(logPath), 0, False
+              QuoteArg(backupFile) & " " & QuoteArg(logPath), 0, False
     Exit Sub
 
 CreateError:
