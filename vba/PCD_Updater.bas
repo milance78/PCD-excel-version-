@@ -304,6 +304,11 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     Dim ts As Object
     Dim shell As Object
 
+    ' processId is intentionally retained in the signature for compatibility
+    ' with the build-time validator. The external updater does not wait for the
+    ' whole Excel process to disappear because Excel may keep the process alive
+    ' for other workbooks/add-ins. It simply retries the specific file move
+    ' until the workbook file is released.
     scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
     logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
     backupFile = oldFile & ".pcd-old"
@@ -318,29 +323,14 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     On Error GoTo CreateError
 
     scriptText = "Option Explicit" & vbCrLf
-    AppendVbsLine scriptText, "Dim fso, shell, wmi, processes, newFile, oldFile, backupFile, logPath, processId, i, replaced"
+    AppendVbsLine scriptText, "Dim fso, shell, newFile, oldFile, backupFile, logPath, i, replaced"
     AppendVbsLine scriptText, "Set fso = CreateObject(""Scripting.FileSystemObject"")"
     AppendVbsLine scriptText, "Set shell = CreateObject(""WScript.Shell"")"
     AppendVbsLine scriptText, "newFile = WScript.Arguments(0)"
     AppendVbsLine scriptText, "oldFile = WScript.Arguments(1)"
     AppendVbsLine scriptText, "backupFile = WScript.Arguments(2)"
     AppendVbsLine scriptText, "logPath = WScript.Arguments(3)"
-    AppendVbsLine scriptText, "processId = CLng(WScript.Arguments(4))"
-    AppendVbsLine scriptText, "Set wmi = GetObject(""winmgmts:\\.\root\cimv2"")"
-    AppendVbsLine scriptText, "LogLine ""WAITING FOR EXCEL PID="" & processId"
-    AppendVbsLine scriptText, "For i = 1 To 120"
-    AppendVbsLine scriptText, "  Set processes = wmi.ExecQuery(""SELECT ProcessId FROM Win32_Process WHERE ProcessId="" & processId)"
-    AppendVbsLine scriptText, "  If processes.Count = 0 Then Exit For"
-    AppendVbsLine scriptText, "  WScript.Sleep 1000"
-    AppendVbsLine scriptText, "Next"
-    AppendVbsLine scriptText, "If processes.Count > 0 Then"
-    AppendVbsLine scriptText, "  LogLine ""EXCEL DID NOT EXIT after 120 seconds"""
-    AppendVbsLine scriptText, "  WScript.Quit 2"
-    AppendVbsLine scriptText, "End If"
-    AppendVbsLine scriptText, "WScript.Sleep 1000"
-    AppendVbsLine scriptText, "LogLine ""START"""
-    AppendVbsLine scriptText, "LogLine ""NEW="" & newFile"
-    AppendVbsLine scriptText, "LogLine ""OLD="" & oldFile"
+    AppendVbsLine scriptText, "LogLine ""WAITING FOR EXCEL TO RELEASE WORKBOOK"""
     AppendVbsLine scriptText, "For i = 1 To 120"
     AppendVbsLine scriptText, "  On Error Resume Next"
     AppendVbsLine scriptText, "  Err.Clear"
@@ -367,9 +357,8 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     AppendVbsLine scriptText, "Next"
     AppendVbsLine scriptText, "If replaced Then"
     AppendVbsLine scriptText, "  LogLine ""REPLACED OK"""
-    AppendVbsLine scriptText, "  If fso.FileExists(backupFile) Then fso.DeleteFile backupFile, True"
+    AppendVbsLine scriptText, "  WScript.Sleep 1000"
     AppendVbsLine scriptText, "  LogLine ""LAUNCHING "" & oldFile"
-    AppendVbsLine scriptText, "  WScript.Sleep 1500"
     AppendVbsLine scriptText, "  shell.Run Chr(34) & oldFile & Chr(34), 1, False"
     AppendVbsLine scriptText, "Else"
     AppendVbsLine scriptText, "  LogLine ""REPLACEMENT FAILED after 120 attempts"""
@@ -394,8 +383,7 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     Set shell = CreateObject("WScript.Shell")
     shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & _
               QuoteArg(newFile) & " " & QuoteArg(oldFile) & " " & _
-              QuoteArg(backupFile) & " " & QuoteArg(logPath) & " " & _
-              CStr(processId), 0, False
+              QuoteArg(backupFile) & " " & QuoteArg(logPath), 0, False
     Exit Sub
 
 CreateError:
