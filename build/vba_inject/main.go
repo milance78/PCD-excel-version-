@@ -10,24 +10,33 @@ import (
 
 func read(path string) []byte {
     b, err := os.ReadFile(path)
-    if err != nil { panic(err) }
+    if err != nil {
+        panic(err)
+    }
     return b
 }
 
 func write(path string, b []byte) {
-    if err := os.WriteFile(path, b, 0644); err != nil { panic(err) }
+    if err := os.WriteFile(path, b, 0644); err != nil {
+        panic(err)
+    }
 }
 
 func stripNameAndOptionExplicit(s string) string {
     lines := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
     out := make([]string, 0, len(lines))
+
     for _, line := range lines {
         t := strings.TrimSpace(line)
-        if strings.HasPrefix(t, "Attribute VB_Name ") || strings.EqualFold(t, "Option Explicit") {
+
+        if strings.HasPrefix(t, "Attribute VB_Name ") ||
+            strings.EqualFold(t, "Option Explicit") {
             continue
         }
+
         out = append(out, line)
     }
+
     return strings.TrimRight(strings.Join(out, "\r\n"), "\r\n")
 }
 
@@ -35,24 +44,32 @@ func main() {
     if len(os.Args) != 5 {
         panic("usage: inject base.bin magic.bas updater.bas output.bin")
     }
-    basePath, magicPath, updaterPath, outPath := os.Args[1], os.Args[2], os.Args[3], os.Args[4]
+
+    basePath, magicPath, updaterPath, outPath :=
+        os.Args[1], os.Args[2], os.Args[3], os.Args[4]
+
     p, err := vbaproject.Read(read(basePath))
-    if err != nil { panic(err) }
+    if err != nil {
+        panic(err)
+    }
 
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
     _ = updaterPath
 
-    // DEV-27 diagnostic: add FileSha256, but do not call it.
-    // This isolates whether FileSha256, WScript.Shell, certutil and RegExp make Module1 unloadable.
+    // DEV-28 diagnostic:
+    // Add the complete ScheduleReplacement + QuoteArg code,
+    // but do not call them.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
         "Private Const VERSION_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json\"\r\n" +
         "Private Const ARTIFACT_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-dev.xlsm\"\r\n" +
         "Private Const UPDATE_TIMEOUT_SECONDS As Long = 30\r\n" +
         magic + "\r\n\r\n" +
+
         "Public Sub CheckForUpdate()\r\n" +
-        "    MsgBox \"DEV-27: Module1 loads with FileSha256.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "    MsgBox \"DEV-28: Module1 loads with ScheduleReplacement.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
         "End Sub\r\n\r\n" +
+
         "Private Function HttpGetText(ByVal url As String) As String\r\n" +
         "    Dim http As Object\r\n" +
         "    Set http = CreateObject(\"MSXML2.XMLHTTP.6.0\")\r\n" +
@@ -64,16 +81,18 @@ func main() {
         "    End If\r\n" +
         "    HttpGetText = CStr(http.responseText)\r\n" +
         "End Function\r\n\r\n" +
+
         "Private Function JsonValue(ByVal json As String, ByVal key As String) As String\r\n" +
         "    Dim re As Object\r\n" +
         "    Dim matches As Object\r\n" +
         "    Set re = CreateObject(\"VBScript.RegExp\")\r\n" +
         "    re.Global = False\r\n" +
         "    re.IgnoreCase = True\r\n" +
-        "    re.Pattern = \"\"\"\" & key & \"\"\"\" & \"\\\\s*:\\\\s*\"\"\"([^\"\"]*)\"\"\"\"\r\n" +
+        "    re.Pattern = \"\"\"\" & key & \"\"\"\" & \"\\s*:\\s*\"\"\"([^\"\"]*)\"\"\"\"\r\n" +
         "    Set matches = re.Execute(json)\r\n" +
         "    If matches.Count > 0 Then JsonValue = matches(0).SubMatches(0)\r\n" +
         "End Function\r\n\r\n" +
+
         "Private Function CompareVersions(ByVal a As String, ByVal b As String) As Long\r\n" +
         "    Dim pa() As String, pb() As String\r\n" +
         "    Dim i As Long, na As Long, nb As Long\r\n" +
@@ -91,6 +110,7 @@ func main() {
         "    Next i\r\n" +
         "    CompareVersions = CompareBuildSuffix(a, b)\r\n" +
         "End Function\r\n\r\n" +
+
         "Private Function CompareBuildSuffix(ByVal a As String, ByVal b As String) As Long\r\n" +
         "    Dim da As Long, db As Long\r\n" +
         "    da = LastNumberAfterDash(a)\r\n" +
@@ -103,6 +123,7 @@ func main() {
         "        CompareBuildSuffix = 0\r\n" +
         "    End If\r\n" +
         "End Function\r\n\r\n" +
+
         "Private Function LastNumberAfterDash(ByVal value As String) As Long\r\n" +
         "    Dim parts() As String\r\n" +
         "    Dim i As Long\r\n" +
@@ -114,6 +135,7 @@ func main() {
         "        End If\r\n" +
         "    Next i\r\n" +
         "End Function\r\n\r\n" +
+
         "Private Function DownloadUpdate(ByVal remoteVersion As String) As String\r\n" +
         "    Dim http As Object\r\n" +
         "    Dim stream As Object\r\n" +
@@ -137,6 +159,7 @@ func main() {
         "    stream.Close\r\n" +
         "    DownloadUpdate = tempPath\r\n" +
         "End Function\r\n\r\n" +
+
         "Private Function FileSha256(ByVal filePath As String) As String\r\n" +
         "    Dim outputPath As String\r\n" +
         "    Dim shell As Object\r\n" +
@@ -163,18 +186,121 @@ func main() {
         "    Set matches = re.Execute(text)\r\n" +
         "    If matches.Count = 0 Then Err.Raise vbObjectError + 1013, , \"Windows nije vratio SHA-256 vrednost.\"\r\n" +
         "    FileSha256 = LCase$(matches(0).Value)\r\n" +
+        "End Function\r\n\r\n" +
+
+        "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)\r\n" +
+        "    Dim scriptPath As String\r\n" +
+        "    Dim logPath As String\r\n" +
+        "    Dim scriptText As String\r\n" +
+        "    Dim fso As Object\r\n" +
+        "    Dim ts As Object\r\n" +
+        "    Dim shell As Object\r\n" +
+        "\r\n" +
+        "    scriptPath = Environ$(\"TEMP\") & \"\\PCD-Excel-updater.vbs\"\r\n" +
+        "    logPath = Environ$(\"TEMP\") & \"\\PCD-Excel-updater.log\"\r\n" +
+        "\r\n" +
+        "    On Error GoTo CreateError\r\n" +
+        "\r\n" +
+        "    Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n" +
+        "\r\n" +
+        "    On Error Resume Next\r\n" +
+        "    If fso.FileExists(logPath) Then fso.DeleteFile logPath, True\r\n" +
+        "    On Error GoTo CreateError\r\n" +
+        "\r\n" +
+        "    scriptText = _\r\n" +
+        "        \"Option Explicit\" & vbCrLf & _\r\n" +
+        "        \"Dim fso, shell, newFile, oldFile, logPath, i, replaced\" & vbCrLf & _\r\n" +
+        "        \"Set fso = CreateObject(\"\"Scripting.FileSystemObject\"\")\" & vbCrLf & _\r\n" +
+        "        \"Set shell = CreateObject(\"\"WScript.Shell\"\")\" & vbCrLf & _\r\n" +
+        "        \"newFile = WScript.Arguments(0)\" & vbCrLf & _\r\n" +
+        "        \"oldFile = WScript.Arguments(1)\" & vbCrLf & _\r\n" +
+        "        \"logPath = WScript.Arguments(2)\" & vbCrLf & _\r\n" +
+        "        \"LogLine \"\"START\"\"\" & vbCrLf & _\r\n" +
+        "        \"LogLine \"\"NEW=\"\" & newFile\" & vbCrLf & _\r\n" +
+        "        \"LogLine \"\"OLD=\"\" & oldFile\" & vbCrLf & _\r\n" +
+        "        \"For i = 1 To 120\" & vbCrLf & _\r\n" +
+        "        \"  On Error Resume Next\" & vbCrLf & _\r\n" +
+        "        \"  Err.Clear\" & vbCrLf & _\r\n" +
+        "        \"  If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True\" & vbCrLf & _\r\n" +
+        "        \"  If Err.Number = 0 Then\" & vbCrLf & _\r\n" +
+        "        \"    LogLine \"\"DELETE OK attempt=\"\" & i\" & vbCrLf & _\r\n" +
+        "        \"    Err.Clear\" & vbCrLf & _\r\n" +
+        "        \"    fso.MoveFile newFile, oldFile\" & vbCrLf & _\r\n" +
+        "        \"    If Err.Number = 0 Then\" & vbCrLf & _\r\n" +
+        "        \"      replaced = True\" & vbCrLf & _\r\n" +
+        "        \"      LogLine \"\"MOVE OK attempt=\"\" & i\" & vbCrLf & _\r\n" +
+        "        \"      Exit For\" & vbCrLf & _\r\n" +
+        "        \"    Else\" & vbCrLf & _\r\n" +
+        "        \"      LogLine \"\"MOVE ERROR \"\" & Err.Number & \"\" \"\" & Err.Description\" & vbCrLf & _\r\n" +
+        "        \"    End If\" & vbCrLf & _\r\n" +
+        "        \"  Else\" & vbCrLf & _\r\n" +
+        "        \"    LogLine \"\"DELETE ERROR \"\" & Err.Number & \"\" \"\" & Err.Description\" & vbCrLf & _\r\n" +
+        "        \"  End If\" & vbCrLf & _\r\n" +
+        "        \"  Err.Clear\" & vbCrLf & _\r\n" +
+        "        \"  On Error GoTo 0\" & vbCrLf & _\r\n" +
+        "        \"  WScript.Sleep 1000\" & vbCrLf & _\r\n" +
+        "        \"Next\" & vbCrLf & _\r\n" +
+        "        \"If replaced Then\" & vbCrLf & _\r\n" +
+        "        \"  LogLine \"\"REPLACED OK\"\"\" & vbCrLf & _\r\n" +
+        "        \"  LogLine \"\"LAUNCHING \"\" & oldFile\" & vbCrLf & _\r\n" +
+        "        \"  shell.Run Chr(34) & oldFile & Chr(34), 1, False\" & vbCrLf & _\r\n" +
+        "        \"Else\" & vbCrLf & _\r\n" +
+        "        \"  LogLine \"\"REPLACEMENT FAILED after 120 attempts\"\"\" & vbCrLf & _\r\n" +
+        "        \"End If\" & vbCrLf & _\r\n" +
+        "        \"LogLine \"\"END\"\"\" & vbCrLf & _\r\n" +
+        "        \"Sub LogLine(ByVal message)\" & vbCrLf & _\r\n" +
+        "        \"  Dim logFile\" & vbCrLf & _\r\n" +
+        "        \"  On Error Resume Next\" & vbCrLf & _\r\n" +
+        "        \"  Set logFile = fso.OpenTextFile(logPath, 8, True)\" & vbCrLf & _\r\n" +
+        "        \"  logFile.WriteLine Now & \"\" | \"\" & message\" & vbCrLf & _\r\n" +
+        "        \"  logFile.Close\" & vbCrLf & _\r\n" +
+        "        \"End Sub\"\r\n" +
+        "\r\n" +
+        "    Set ts = fso.CreateTextFile(scriptPath, True, False)\r\n" +
+        "    ts.Write scriptText\r\n" +
+        "    ts.Close\r\n" +
+        "\r\n" +
+        "    If Not fso.FileExists(scriptPath) Then\r\n" +
+        "        Err.Raise vbObjectError + 1020, , \"Updater nije uspeo da napravi VBS fajl.\"\r\n" +
+        "    End If\r\n" +
+        "\r\n" +
+        "    Set shell = CreateObject(\"WScript.Shell\")\r\n" +
+        "    shell.Run \"wscript.exe \" & QuoteArg(scriptPath) & \" \" & _\r\n" +
+        "              QuoteArg(newFile) & \" \" & QuoteArg(oldFile) & \" \" & _\r\n" +
+        "              QuoteArg(logPath), 0, False\r\n" +
+        "    Exit Sub\r\n" +
+        "\r\n" +
+        "CreateError:\r\n" +
+        "    Err.Raise vbObjectError + 1021, , \"Updater nije uspeo da pripremi eksterni updater.\" & vbCrLf & Err.Description\r\n" +
+        "End Sub\r\n\r\n" +
+
+        "Private Function QuoteArg(ByVal value As String) As String\r\n" +
+        "    QuoteArg = \"\"\"\" & Replace(value, \"\"\"\", \"\"\"\"\") & \"\"\"\"\r\n" +
         "End Function\r\n"
 
     foundModule1, foundSheet2 := false, false
+
     for i := range p.Modules {
         switch p.Modules[i].Name {
+
         case "Module1":
-            normalized, err := vbaproject.NormalizeModuleSource(vbaproject.ModuleStd, module1Source, nil)
-            if err != nil { panic(err) }
+            normalized, err :=
+                vbaproject.NormalizeModuleSource(
+                    vbaproject.ModuleStd,
+                    module1Source,
+                    nil,
+                )
+
+            if err != nil {
+                panic(err)
+            }
+
             p.Modules[i].Source = normalized
             foundModule1 = true
+
         case "Sheet2":
-            eventSource := "Private Sub Worksheet_Change(ByVal Target As Range)\r\n" +
+            eventSource :=
+                "Private Sub Worksheet_Change(ByVal Target As Range)\r\n" +
                 "    If Intersect(Target, Me.Range(\"B5\")) Is Nothing Then Exit Sub\r\n" +
                 "    If Len(Trim$(CStr(Target.Value))) < 10 Then Exit Sub\r\n" +
                 "    On Error GoTo CleanFail\r\n" +
@@ -183,49 +309,152 @@ func main() {
                 "CleanFail:\r\n" +
                 "    Application.EnableEvents = True\r\n" +
                 "End Sub\r\n"
+
             existing := p.Modules[i]
-            normalized, err := vbaproject.NormalizeModuleSource(vbaproject.ModuleDocument, eventSource, &existing)
-            if err != nil { panic(err) }
+
+            normalized, err :=
+                vbaproject.NormalizeModuleSource(
+                    vbaproject.ModuleDocument,
+                    eventSource,
+                    &existing,
+                )
+
+            if err != nil {
+                panic(err)
+            }
+
             p.Modules[i].Source = normalized
             foundSheet2 = true
         }
     }
+
     if !foundModule1 || !foundSheet2 {
-        panic(fmt.Sprintf("expected base modules not found: Module1=%v Sheet2=%v", foundModule1, foundSheet2))
+        panic(fmt.Sprintf(
+            "expected base modules not found: Module1=%v Sheet2=%v",
+            foundModule1,
+            foundSheet2,
+        ))
     }
+
     out, err := vbaproject.Write(p)
-    if err != nil { panic(err) }
+    if err != nil {
+        panic(err)
+    }
 
     // Read the generated project back and validate the expected public macros.
     check, err := vbaproject.Read(out)
-    if err != nil { panic(fmt.Sprintf("post-write VBA validation failed: %v", err)) }
+    if err != nil {
+        panic(fmt.Sprintf(
+            "post-write VBA validation failed: %v",
+            err,
+        ))
+    }
+
     validated := false
+
     for _, m := range check.Modules {
         if m.Name == "Module1" {
-            if !strings.Contains(m.Source, "Public Sub ImportMagicFromSheet()") {
-                panic("post-write VBA validation: ImportMagicFromSheet missing")
+
+            if !strings.Contains(
+                m.Source,
+                "Public Sub ImportMagicFromSheet()",
+            ) {
+                panic(
+                    "post-write VBA validation: ImportMagicFromSheet missing",
+                )
             }
-            if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
-                panic("post-write VBA validation: CheckForUpdate stub missing")
+
+            if !strings.Contains(
+                m.Source,
+                "Public Sub CheckForUpdate()",
+            ) {
+                panic(
+                    "post-write VBA validation: CheckForUpdate stub missing",
+                )
             }
-            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") || !strings.Contains(m.Source, "Private Function JsonValue(ByVal json As String, ByVal key As String)") || !strings.Contains(m.Source, "Private Function CompareVersions(ByVal a As String, ByVal b As String)") || !strings.Contains(m.Source, "Private Function DownloadUpdate(ByVal remoteVersion As String)") || !strings.Contains(m.Source, "Private Function FileSha256(ByVal filePath As String)") {
-                panic("post-write VBA validation: DEV-27 updater declarations missing")
+
+            if !strings.Contains(
+                m.Source,
+                "Private Const VERSION_URL As String",
+            ) ||
+                !strings.Contains(
+                    m.Source,
+                    "Private Const ARTIFACT_URL As String",
+                ) ||
+                !strings.Contains(
+                    m.Source,
+                    "Private Function HttpGetText(ByVal url As String)",
+                ) ||
+                !strings.Contains(
+                    m.Source,
+                    "Private Function JsonValue(ByVal json As String, ByVal key As String)",
+                ) ||
+                !strings.Contains(
+                    m.Source,
+                    "Private Function CompareVersions(ByVal a As String, ByVal b As String)",
+                ) ||
+                !strings.Contains(
+                    m.Source,
+                    "Private Function DownloadUpdate(ByVal remoteVersion As String)",
+                ) ||
+                !strings.Contains(
+                    m.Source,
+                    "Private Function FileSha256(ByVal filePath As String)",
+                ) ||
+                !strings.Contains(
+                    m.Source,
+                    "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)",
+                ) ||
+                !strings.Contains(
+                    m.Source,
+                    "Private Function QuoteArg(ByVal value As String)",
+                ) {
+                panic(
+                    "post-write VBA validation: DEV-28 updater declarations missing",
+                )
             }
-            if strings.Contains(m.Source, "Dim localSha256 As String") {
-                panic("post-write VBA validation: full updater code unexpectedly present in DEV-27")
+
+            if strings.Contains(
+                m.Source,
+                "Dim localSha256 As String",
+            ) {
+                panic(
+                    "post-write VBA validation: full updater code unexpectedly present in DEV-28",
+                )
             }
+
             firstProc := len(m.Source)
-            for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
-                if i := strings.Index(m.Source, token); i >= 0 && i < firstProc { firstProc = i }
+
+            for _, token := range []string{
+                "Private Function ",
+                "Public Function ",
+                "Private Sub ",
+                "Public Sub ",
+            } {
+                if i := strings.Index(m.Source, token); i >= 0 && i < firstProc {
+                    firstProc = i
+                }
             }
+
             if i := strings.Index(m.Source, "Private Const "); i >= firstProc {
-                panic("post-write VBA validation: Private Const appears after first procedure")
+                panic(
+                    "post-write VBA validation: Private Const appears after first procedure",
+                )
             }
+
             validated = true
         }
     }
-    if !validated { panic("post-write VBA validation: Module1 not found") }
+
+    if !validated {
+        panic("post-write VBA validation: Module1 not found")
+    }
 
     write(outPath, out)
-    fmt.Printf("Injected and validated PCD VBA: %s (%d bytes)\n", outPath, len(out))
+
+    fmt.Printf(
+        "Injected and validated PCD VBA: %s (%d bytes)\n",
+        outPath,
+        len(out),
+    )
 }
