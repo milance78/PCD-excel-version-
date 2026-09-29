@@ -207,55 +207,55 @@ func main() {
         "    If fso.FileExists(logPath) Then fso.DeleteFile logPath, True\r\n" +
         "    On Error GoTo CreateError\r\n" +
         "\r\n" +
-        "    scriptText = _\r\n" +
-        "        \"Option Explicit\" & vbCrLf & _\r\n" +
-        "        \"Dim fso, shell, newFile, oldFile, logPath, i, replaced\" & vbCrLf & _\r\n" +
-        "        \"Set fso = CreateObject(\"\"Scripting.FileSystemObject\"\")\" & vbCrLf & _\r\n" +
-        "        \"Set shell = CreateObject(\"\"WScript.Shell\"\")\" & vbCrLf & _\r\n" +
-        "        \"newFile = WScript.Arguments(0)\" & vbCrLf & _\r\n" +
-        "        \"oldFile = WScript.Arguments(1)\" & vbCrLf & _\r\n" +
-        "        \"logPath = WScript.Arguments(2)\" & vbCrLf & _\r\n" +
-        "        \"LogLine \"\"START\"\"\" & vbCrLf & _\r\n" +
-        "        \"LogLine \"\"NEW=\"\" & newFile\" & vbCrLf & _\r\n" +
-        "        \"LogLine \"\"OLD=\"\" & oldFile\" & vbCrLf & _\r\n" +
-        "        \"For i = 1 To 120\" & vbCrLf & _\r\n" +
-        "        \"  On Error Resume Next\" & vbCrLf & _\r\n" +
-        "        \"  Err.Clear\" & vbCrLf & _\r\n" +
-        "        \"  If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True\" & vbCrLf & _\r\n" +
-        "        \"  If Err.Number = 0 Then\" & vbCrLf & _\r\n" +
-        "        \"    LogLine \"\"DELETE OK attempt=\"\" & i\" & vbCrLf & _\r\n" +
-        "        \"    Err.Clear\" & vbCrLf & _\r\n" +
-        "        \"    fso.MoveFile newFile, oldFile\" & vbCrLf & _\r\n" +
-        "        \"    If Err.Number = 0 Then\" & vbCrLf & _\r\n" +
-        "        \"      replaced = True\" & vbCrLf & _\r\n" +
-        "        \"      LogLine \"\"MOVE OK attempt=\"\" & i\" & vbCrLf & _\r\n" +
-        "        \"      Exit For\" & vbCrLf & _\r\n" +
-        "        \"    Else\" & vbCrLf & _\r\n" +
-        "        \"      LogLine \"\"MOVE ERROR \"\" & Err.Number & \"\" \"\" & Err.Description\" & vbCrLf & _\r\n" +
-        "        \"    End If\" & vbCrLf & _\r\n" +
-        "        \"  Else\" & vbCrLf & _\r\n" +
-        "        \"    LogLine \"\"DELETE ERROR \"\" & Err.Number & \"\" \"\" & Err.Description\" & vbCrLf & _\r\n" +
-        "        \"  End If\" & vbCrLf & _\r\n" +
-        "        \"  Err.Clear\" & vbCrLf & _\r\n" +
-        "        \"  On Error GoTo 0\" & vbCrLf & _\r\n" +
-        "        \"  WScript.Sleep 1000\" & vbCrLf & _\r\n" +
-        "        \"Next\" & vbCrLf & _\r\n" +
-        "        \"If replaced Then\" & vbCrLf & _\r\n" +
-        "        \"  LogLine \"\"REPLACED OK\"\"\" & vbCrLf & _\r\n" +
-        "        \"  LogLine \"\"LAUNCHING \"\" & oldFile\" & vbCrLf & _\r\n" +
-        "        \"  shell.Run Chr(34) & oldFile & Chr(34), 1, False\" & vbCrLf & _\r\n" +
-        "        \"Else\" & vbCrLf & _\r\n" +
-        "        \"  LogLine \"\"REPLACEMENT FAILED after 120 attempts\"\"\" & vbCrLf & _\r\n" +
-        "        \"End If\" & vbCrLf & _\r\n" +
-        "        \"LogLine \"\"END\"\"\" & vbCrLf & _\r\n" +
-        "        \"Sub LogLine(ByVal message)\" & vbCrLf & _\r\n" +
-        "        \"  Dim logFile\" & vbCrLf & _\r\n" +
-        "        \"  On Error Resume Next\" & vbCrLf & _\r\n" +
-        "        \"  Set logFile = fso.OpenTextFile(logPath, 8, True)\" & vbCrLf & _\r\n" +
-        "        \"  logFile.WriteLine Now & \"\" | \"\" & message\" & vbCrLf & _\r\n" +
-        "        \"  logFile.Close\" & vbCrLf & _\r\n" +
-        "        \"End Sub\"\r\n" +
-        "\r\n" +
+        "    scriptText = \\\"\r\n" +
+        "    scriptText = scriptText &         \"Option Explicit\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"Dim fso, shell, newFile, oldFile, logPath, i, replaced\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"Set fso = CreateObject(\"\"Scripting.FileSystemObject\"\")\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"Set shell = CreateObject(\"\"WScript.Shell\"\")\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"newFile = WScript.Arguments(0)\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"oldFile = WScript.Arguments(1)\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"logPath = WScript.Arguments(2)\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"LogLine \"\"START\"\"\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"LogLine \"\"NEW=\"\" & newFile\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"LogLine \"\"OLD=\"\" & oldFile\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"For i = 1 To 120\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  On Error Resume Next\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  Err.Clear\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  If Err.Number = 0 Then\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"    LogLine \"\"DELETE OK attempt=\"\" & i\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"    Err.Clear\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"    fso.MoveFile newFile, oldFile\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"    If Err.Number = 0 Then\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"      replaced = True\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"      LogLine \"\"MOVE OK attempt=\"\" & i\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"      Exit For\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"    Else\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"      LogLine \"\"MOVE ERROR \"\" & Err.Number & \"\" \"\" & Err.Description\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"    End If\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  Else\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"    LogLine \"\"DELETE ERROR \"\" & Err.Number & \"\" \"\" & Err.Description\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  End If\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  Err.Clear\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  On Error GoTo 0\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  WScript.Sleep 1000\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"Next\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"If replaced Then\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  LogLine \"\"REPLACED OK\"\"\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  LogLine \"\"LAUNCHING \"\" & oldFile\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  shell.Run Chr(34) & oldFile & Chr(34), 1, False\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"Else\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  LogLine \"\"REPLACEMENT FAILED after 120 attempts\"\"\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"End If\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"LogLine \"\"END\"\"\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"Sub LogLine(ByVal message)\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  Dim logFile\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  On Error Resume Next\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  Set logFile = fso.OpenTextFile(logPath, 8, True)\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  logFile.WriteLine Now & \"\" | \"\" & message\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"  logFile.Close\" & vbCrLf\r\n" +
+        "    scriptText = scriptText &         \"End Sub\"\r\n" +
+        "    scriptText = scriptText & \r\n" +
         "    Set ts = fso.CreateTextFile(scriptPath, True, False)\r\n" +
         "    ts.Write scriptText\r\n" +
         "    ts.Close\r\n" +
