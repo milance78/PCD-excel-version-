@@ -195,24 +195,39 @@ Private Function JsonValue(ByVal json As String, ByVal key As String) As String
 End Function
 
 Private Function CompareVersions(ByVal a As String, ByVal b As String) As Long
-    Dim pa() As String, pb() As String
-    Dim i As Long, na As Long, nb As Long
-    Dim aCore As String, bCore As String
+    Dim buildA As Long, buildB As Long
 
-    aCore = Split(a, "-")(0)
-    bCore = Split(b, "-")(0)
-    pa = Split(aCore, ".")
-    pb = Split(bCore, ".")
+    buildA = BuildNumber(a)
+    buildB = BuildNumber(b)
 
-    For i = 0 To 2
-        na = 0: nb = 0
-        If i <= UBound(pa) And IsNumeric(pa(i)) Then na = CLng(pa(i))
-        If i <= UBound(pb) And IsNumeric(pb(i)) Then nb = CLng(pb(i))
-        If na > nb Then CompareVersions = 1: Exit Function
-        If na < nb Then CompareVersions = -1: Exit Function
+    If buildA > buildB Then
+        CompareVersions = 1
+    ElseIf buildA < buildB Then
+        CompareVersions = -1
+    Else
+        CompareVersions = 0
+    End If
+End Function
+
+Private Function BuildNumber(ByVal value As String) As Long
+    Dim parts() As String
+    Dim i As Long
+
+    value = Trim$(value)
+    If Len(value) = 0 Then Exit Function
+
+    If IsNumeric(value) Then
+        BuildNumber = CLng(value)
+        Exit Function
+    End If
+
+    parts = Split(value, "-")
+    For i = UBound(parts) To 0 Step -1
+        If IsNumeric(parts(i)) Then
+            BuildNumber = CLng(parts(i))
+            Exit Function
+        End If
     Next i
-
-    CompareVersions = CompareBuildSuffix(a, b)
 End Function
 
 Private Function CompareBuildSuffix(ByVal a As String, ByVal b As String) As Long
