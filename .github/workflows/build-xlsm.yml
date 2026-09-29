@@ -69,7 +69,7 @@ jobs:
           unzip -p "$FILE" xl/vbaProject.bin > build/final-vbaProject.bin
           test -s build/final-vbaProject.bin
           cd build/vba_inject
-          go run ./validatecmd ../../build/final-vbaProject.bin "DEV-28: Module1 loads with ScheduleReplacement."
+          go run ./validatecmd ../../build/final-vbaProject.bin "DEV-28.1: Module1 loads with split ScheduleReplacement scriptText."
 
       - name: Publish artifact and checksum
         run: |
