@@ -2,7 +2,7 @@ Attribute VB_Name = "PCD_Updater"
 Option Explicit
 
 Private Const VERSION_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json"
-Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-dev.xlsm"
+Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-latest.xlsm"
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
 Public Sub CheckForUpdate()
