@@ -131,7 +131,11 @@ func checkVBABlockStructure(moduleName, source string) {
 		}
 
 		if l == "do" || strings.HasPrefix(l, "do ") {
-			stack = append(stack, blockFrame{"Do", lineNo})
+			// VBA permits a compact single-line Do/Loop construct, e.g.
+			// "Do While ...: ...: Loop". It opens and closes on the same line.
+			if !strings.Contains(l, ": loop") && !strings.HasSuffix(l, " loop") {
+				stack = append(stack, blockFrame{"Do", lineNo})
+			}
 		}
 
 		if strings.HasPrefix(l, "select case ") {
