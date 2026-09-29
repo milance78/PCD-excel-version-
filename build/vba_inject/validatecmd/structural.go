@@ -63,9 +63,12 @@ func checkVBAContinuationRules(moduleName, source string) {
 				fail(fmt.Sprintf("%s line %d: continuation '_' has no following line", moduleName, i+1))
 			}
 
-			next := strings.TrimSpace(maskForStructure(lines[i+1]))
-			if next == "" {
-				fail(fmt.Sprintf("%s line %d: continuation '_' is followed by a blank line", moduleName, i+1))
+			// Do not use maskForStructure here: a valid continuation may be
+			// followed by a line whose entire content is a string literal
+			// (for example, "End Sub"). Masking that line would make it look blank.
+			nextRaw := strings.TrimSpace(lines[i+1])
+			if nextRaw == "" || strings.HasPrefix(nextRaw, "'") {
+				fail(fmt.Sprintf("%s line %d: continuation '_' is followed by a blank/comment line", moduleName, i+1))
 			}
 		}
 	}
