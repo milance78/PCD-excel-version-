@@ -86,7 +86,7 @@ func main() {
         "        .Close\r\n" +
         "    End With\r\n" +
         "    ScheduleReplacement newFile, oldFile\r\n" +
-        "    MsgBox \"DEV-29: ScheduleReplacement je pozvan.\r\n\r\nLog: \" & Environ$(\"TEMP\") & \"\\PCD-Excel-updater.log\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "    MsgBox \"DEV-29: ScheduleReplacement je pozvan.\" & vbCrLf & vbCrLf & \"Log: \" & Environ$(\"TEMP\") & \"\\PCD-Excel-updater.log\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
         "End Sub\r\n\r\n" +
 
         "Private Function HttpGetText(ByVal url As String) As String\r\n" +
