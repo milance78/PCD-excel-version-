@@ -297,19 +297,19 @@ End Function
 
 Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String, ByVal processId As Long)
     Dim scriptPath As String
+    Dim cmdPath As String
     Dim logPath As String
     Dim backupFile As String
     Dim scriptText As String
+    Dim cmdText As String
     Dim fso As Object
     Dim ts As Object
     Dim shell As Object
 
-    ' processId is intentionally retained in the signature for compatibility
-    ' with the build-time validator. The external updater does not wait for the
-    ' whole Excel process to disappear because Excel may keep the process alive
-    ' for other workbooks/add-ins. It simply retries the specific file move
-    ' until the workbook file is released.
+    ' Keep the processId argument for compatibility with the build validator.
+    ' The detached CMD performs the replacement after Excel has released the file.
     scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
+    cmdPath = Environ$("TEMP") & "\PCD-Excel-updater.cmd"
     logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
     backupFile = oldFile & ".pcd-old"
 
@@ -319,71 +319,61 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
 
     On Error Resume Next
     If fso.FileExists(logPath) Then fso.DeleteFile logPath, True
+    If fso.FileExists(cmdPath) Then fso.DeleteFile cmdPath, True
+    If fso.FileExists(scriptPath) Then fso.DeleteFile scriptPath, True
     If fso.FileExists(backupFile) Then fso.DeleteFile backupFile, True
     On Error GoTo CreateError
 
+    ' VBS only launches the detached CMD. The CMD owns the replacement loop.
     scriptText = "Option Explicit" & vbCrLf
-    AppendVbsLine scriptText, "Dim fso, shell, newFile, oldFile, backupFile, logPath, i, replaced"
-    AppendVbsLine scriptText, "Set fso = CreateObject(""Scripting.FileSystemObject"")"
+    AppendVbsLine scriptText, "Dim shell"
     AppendVbsLine scriptText, "Set shell = CreateObject(""WScript.Shell"")"
-    AppendVbsLine scriptText, "newFile = WScript.Arguments(0)"
-    AppendVbsLine scriptText, "oldFile = WScript.Arguments(1)"
-    AppendVbsLine scriptText, "backupFile = WScript.Arguments(2)"
-    AppendVbsLine scriptText, "logPath = WScript.Arguments(3)"
-    AppendVbsLine scriptText, "LogLine ""WAITING FOR EXCEL TO RELEASE WORKBOOK"""
-    AppendVbsLine scriptText, "For i = 1 To 120"
-    AppendVbsLine scriptText, "  On Error Resume Next"
-    AppendVbsLine scriptText, "  Err.Clear"
-    AppendVbsLine scriptText, "  If fso.FileExists(oldFile) Then fso.MoveFile oldFile, backupFile"
-    AppendVbsLine scriptText, "  If Err.Number = 0 Then"
-    AppendVbsLine scriptText, "    LogLine ""BACKUP OK attempt="" & i"
-    AppendVbsLine scriptText, "    Err.Clear"
-    AppendVbsLine scriptText, "    fso.CopyFile newFile, oldFile, True"
-    AppendVbsLine scriptText, "    If Err.Number = 0 Then"
-    AppendVbsLine scriptText, "      replaced = True"
-    AppendVbsLine scriptText, "      LogLine ""MOVE OK attempt="" & i"
-    AppendVbsLine scriptText, "      Exit For"
-    AppendVbsLine scriptText, "    Else"
-    AppendVbsLine scriptText, "      LogLine ""MOVE ERROR "" & Err.Number & "" "" & Err.Description"
-    AppendVbsLine scriptText, "      Err.Clear"
-    AppendVbsLine scriptText, "      If fso.FileExists(backupFile) And Not fso.FileExists(oldFile) Then fso.MoveFile backupFile, oldFile"
-    AppendVbsLine scriptText, "    End If"
-    AppendVbsLine scriptText, "  Else"
-    AppendVbsLine scriptText, "    LogLine ""BACKUP ERROR "" & Err.Number & "" "" & Err.Description"
-    AppendVbsLine scriptText, "  End If"
-    AppendVbsLine scriptText, "  Err.Clear"
-    AppendVbsLine scriptText, "  On Error GoTo 0"
-    AppendVbsLine scriptText, "  WScript.Sleep 1000"
-    AppendVbsLine scriptText, "Next"
-    AppendVbsLine scriptText, "If replaced Then"
-    AppendVbsLine scriptText, "  LogLine ""REPLACED OK"""
-    AppendVbsLine scriptText, "  WScript.Sleep 1000"
-    AppendVbsLine scriptText, "  LogLine ""LAUNCHING "" & oldFile"
-    AppendVbsLine scriptText, "  shell.Run Chr(34) & oldFile & Chr(34), 1, False"
-    AppendVbsLine scriptText, "Else"
-    AppendVbsLine scriptText, "  LogLine ""REPLACEMENT FAILED after 120 attempts"""
-    AppendVbsLine scriptText, "End If"
-    AppendVbsLine scriptText, "LogLine ""END"""
-    AppendVbsLine scriptText, "Sub LogLine(ByVal message)"
-    AppendVbsLine scriptText, "  Dim logFile"
-    AppendVbsLine scriptText, "  On Error Resume Next"
-    AppendVbsLine scriptText, "  Set logFile = fso.OpenTextFile(logPath, 8, True)"
-    AppendVbsLine scriptText, "  logFile.WriteLine Now & "" | "" & message"
-    AppendVbsLine scriptText, "  logFile.Close"
-    AppendVbsLine scriptText, "End Sub"
+    AppendVbsLine scriptText, "shell.Run ""cmd.exe /c "" & Chr(34) & WScript.Arguments(0) & Chr(34), 0, False"
 
     Set ts = fso.CreateTextFile(scriptPath, True, False)
     ts.Write scriptText
     ts.Close
 
-    If Not fso.FileExists(scriptPath) Then
-        Err.Raise vbObjectError + 1020, , "Updater nije uspeo da napravi VBS fajl."
-    End If
+    cmdText = "@echo off" & vbCrLf
+    cmdText = cmdText & "setlocal" & vbCrLf
+    cmdText = cmdText & "set ""NEW=%~1""" & vbCrLf
+    cmdText = cmdText & "set ""OLD=%~2""" & vbCrLf
+    cmdText = cmdText & "set ""BACKUP=%~3""" & vbCrLf
+    cmdText = cmdText & "set ""LOG=%~4""" & vbCrLf
+    cmdText = cmdText & "call :log START" & vbCrLf
+    cmdText = cmdText & "for /L %%I in (1,1,120) do (" & vbCrLf
+    cmdText = cmdText & "  if exist ""%OLD%"" (" & vbCrLf
+    cmdText = cmdText & "    move /Y ""%OLD%"" ""%BACKUP%"" >nul 2>&1" & vbCrLf
+    cmdText = cmdText & "  )" & vbCrLf
+    cmdText = cmdText & "  if exist ""%BACKUP%"" (" & vbCrLf
+    cmdText = cmdText & "    copy /Y ""%NEW%"" ""%OLD%"" >nul 2>&1" & vbCrLf
+    cmdText = cmdText & "    if exist ""%OLD%"" (" & vbCrLf
+    cmdText = cmdText & "      call :log REPLACED" & vbCrLf
+    cmdText = cmdText & "      del /Q ""%NEW%"" >nul 2>&1" & vbCrLf
+    cmdText = cmdText & "      timeout /t 1 /nobreak >nul" & vbCrLf
+    cmdText = cmdText & "      start """" ""%OLD%""" & vbCrLf
+    cmdText = cmdText & "      call :log LAUNCHED" & vbCrLf
+    cmdText = cmdText & "      del /Q ""%BACKUP%"" >nul 2>&1" & vbCrLf
+    cmdText = cmdText & "      exit /b 0" & vbCrLf
+    cmdText = cmdText & "    )" & vbCrLf
+    cmdText = cmdText & "  )" & vbCrLf
+    cmdText = cmdText & "  timeout /t 1 /nobreak >nul" & vbCrLf
+    cmdText = cmdText & ")" & vbCrLf
+    cmdText = cmdText & "call :log FAILED" & vbCrLf
+    cmdText = cmdText & "exit /b 2" & vbCrLf
+    cmdText = cmdText & ":log" & vbCrLf
+    cmdText = cmdText & "echo %date% %time% - %*>>""%LOG%""" & vbCrLf
+    cmdText = cmdText & "exit /b" & vbCrLf
+
+    Set ts = fso.CreateTextFile(cmdPath, True, False)
+    ts.Write cmdText
+    ts.Close
 
     Set shell = CreateObject("WScript.Shell")
     shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & _
-              QuoteArg(newFile) & " " & QuoteArg(oldFile) & " " & _
-              QuoteArg(backupFile) & " " & QuoteArg(logPath), 0, False
+              QuoteArg(cmdPath) & " " & QuoteArg(newFile) & " " & _
+              QuoteArg(oldFile) & " " & QuoteArg(backupFile) & " " & _
+              QuoteArg(logPath), 0, False
     Exit Sub
 
 CreateError:
