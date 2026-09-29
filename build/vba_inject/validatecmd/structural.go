@@ -52,10 +52,26 @@ func maskForStructure(line string) string {
 func checkVBAContinuationRules(moduleName, source string) {
 	lines := strings.Split(strings.ReplaceAll(source, "\r\n", "\n"), "\n")
 
+	continuations := 0
+
 	for i, raw := range lines {
 		masked := strings.TrimSpace(maskForStructure(raw))
 		if masked == "" {
 			continue
+		}
+
+		if continuations > 0 {
+			continuations++
+		} else if strings.HasSuffix(masked, "_") {
+			continuations = 1
+		}
+
+		if continuations > 24 {
+			fail(fmt.Sprintf("%s line %d: VBA statement exceeds the 25-line continuation limit", moduleName, i+1))
+		}
+
+		if !strings.HasSuffix(masked, "_") {
+			continuations = 0
 		}
 
 		if strings.HasSuffix(masked, "_") {
