@@ -54,247 +54,14 @@ func main() {
     }
 
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
-    _ = updaterPath
+    updater := stripNameAndOptionExplicit(string(read(updaterPath)))
 
-    // DEV-28 diagnostic:
-    // Add the complete ScheduleReplacement + QuoteArg code,
-    // but do not call them.
+    // Build Module1 from the real production updater plus the Magic Import code.
+    // Keep all module-level constants before the first procedure.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
-        "Private Const VERSION_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json\"\r\n" +
-        "Private Const ARTIFACT_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-dev.xlsm\"\r\n" +
-        "Private Const UPDATE_TIMEOUT_SECONDS As Long = 30\r\n" +
-        magic + "\r\n\r\n" +
-
-        "Public Sub CheckForUpdate()\r\n" +
-        "    Dim fso As Object\r\n" +
-        "    Dim newFile As String\r\n" +
-        "    Dim oldFile As String\r\n" +
-        "    newFile = Environ$(\"TEMP\") & \"\\PCD-SR-test-new.txt\"\r\n" +
-        "    oldFile = Environ$(\"TEMP\") & \"\\PCD-SR-test-old.txt\"\r\n" +
-        "    Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n" +
-        "    On Error Resume Next\r\n" +
-        "    If fso.FileExists(newFile) Then fso.DeleteFile newFile, True\r\n" +
-        "    If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True\r\n" +
-        "    On Error GoTo 0\r\n" +
-        "    With fso.CreateTextFile(newFile, True, False)\r\n" +
-        "        .WriteLine \"DEV-29 NEW FILE\"\r\n" +
-        "        .Close\r\n" +
-        "    End With\r\n" +
-        "    With fso.CreateTextFile(oldFile, True, False)\r\n" +
-        "        .WriteLine \"DEV-29 OLD FILE\"\r\n" +
-        "        .Close\r\n" +
-        "    End With\r\n" +
-        "    ScheduleReplacement newFile, oldFile\r\n" +
-        "    MsgBox \"DEV-29: ScheduleReplacement je pozvan.\" & vbCrLf & vbCrLf & \"Log: \" & Environ$(\"TEMP\") & \"\\PCD-Excel-updater.log\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
-        "End Sub\r\n\r\n" +
-
-        "Private Function HttpGetText(ByVal url As String) As String\r\n" +
-        "    Dim http As Object\r\n" +
-        "    Set http = CreateObject(\"MSXML2.XMLHTTP.6.0\")\r\n" +
-        "    http.Open \"GET\", url, False\r\n" +
-        "    http.setRequestHeader \"Cache-Control\", \"no-cache\"\r\n" +
-        "    http.Send\r\n" +
-        "    If http.Status < 200 Or http.Status >= 300 Then\r\n" +
-        "        Err.Raise vbObjectError + 1010, , \"GitHub HTTP greska: \" & http.Status & \" \" & http.StatusText\r\n" +
-        "    End If\r\n" +
-        "    HttpGetText = CStr(http.responseText)\r\n" +
-        "End Function\r\n\r\n" +
-
-        "Private Function JsonValue(ByVal json As String, ByVal key As String) As String\r\n" +
-        "    Dim re As Object\r\n" +
-        "    Dim matches As Object\r\n" +
-        "    Set re = CreateObject(\"VBScript.RegExp\")\r\n" +
-        "    re.Global = False\r\n" +
-        "    re.IgnoreCase = True\r\n" +
-        "    re.Pattern = Chr(34) & key & Chr(34) & \"\\s*:\\s*\" & Chr(34) & \"([^\" & Chr(34) & \"]*)\" & Chr(34)\r\n" +
-        "    Set matches = re.Execute(json)\r\n" +
-        "    If matches.Count > 0 Then JsonValue = matches(0).SubMatches(0)\r\n" +
-        "End Function\r\n\r\n" +
-
-        "Private Function CompareVersions(ByVal a As String, ByVal b As String) As Long\r\n" +
-        "    Dim pa() As String, pb() As String\r\n" +
-        "    Dim i As Long, na As Long, nb As Long\r\n" +
-        "    Dim aCore As String, bCore As String\r\n" +
-        "    aCore = Split(a, \"-\")(0)\r\n" +
-        "    bCore = Split(b, \"-\")(0)\r\n" +
-        "    pa = Split(aCore, \".\")\r\n" +
-        "    pb = Split(bCore, \".\")\r\n" +
-        "    For i = 0 To 2\r\n" +
-        "        na = 0: nb = 0\r\n" +
-        "        If i <= UBound(pa) And IsNumeric(pa(i)) Then na = CLng(pa(i))\r\n" +
-        "        If i <= UBound(pb) And IsNumeric(pb(i)) Then nb = CLng(pb(i))\r\n" +
-        "        If na > nb Then CompareVersions = 1: Exit Function\r\n" +
-        "        If na < nb Then CompareVersions = -1: Exit Function\r\n" +
-        "    Next i\r\n" +
-        "    CompareVersions = CompareBuildSuffix(a, b)\r\n" +
-        "End Function\r\n\r\n" +
-
-        "Private Function CompareBuildSuffix(ByVal a As String, ByVal b As String) As Long\r\n" +
-        "    Dim da As Long, db As Long\r\n" +
-        "    da = LastNumberAfterDash(a)\r\n" +
-        "    db = LastNumberAfterDash(b)\r\n" +
-        "    If da > db Then\r\n" +
-        "        CompareBuildSuffix = 1\r\n" +
-        "    ElseIf da < db Then\r\n" +
-        "        CompareBuildSuffix = -1\r\n" +
-        "    Else\r\n" +
-        "        CompareBuildSuffix = 0\r\n" +
-        "    End If\r\n" +
-        "End Function\r\n\r\n" +
-
-        "Private Function LastNumberAfterDash(ByVal value As String) As Long\r\n" +
-        "    Dim parts() As String\r\n" +
-        "    Dim i As Long\r\n" +
-        "    parts = Split(value, \"-\")\r\n" +
-        "    For i = UBound(parts) To 1 Step -1\r\n" +
-        "        If IsNumeric(parts(i)) Then\r\n" +
-        "            LastNumberAfterDash = CLng(parts(i))\r\n" +
-        "            Exit Function\r\n" +
-        "        End If\r\n" +
-        "    Next i\r\n" +
-        "End Function\r\n\r\n" +
-
-        "Private Function DownloadUpdate(ByVal remoteVersion As String) As String\r\n" +
-        "    Dim http As Object\r\n" +
-        "    Dim stream As Object\r\n" +
-        "    Dim tempPath As String\r\n" +
-        "    tempPath = Environ$(\"TEMP\") & \"PCD-Excel-update-\" & Replace(remoteVersion, \".\", \"_\") & \".xlsm\"\r\n" +
-        "    On Error Resume Next\r\n" +
-        "    Kill tempPath\r\n" +
-        "    On Error GoTo 0\r\n" +
-        "    Set http = CreateObject(\"MSXML2.XMLHTTP.6.0\")\r\n" +
-        "    http.Open \"GET\", ARTIFACT_URL & \"?v=\" & Replace(remoteVersion, \" \", \"%20\") & \"&t=\" & CStr(Timer), False\r\n" +
-        "    http.setRequestHeader \"Cache-Control\", \"no-cache\"\r\n" +
-        "    http.Send\r\n" +
-        "    If http.Status < 200 Or http.Status >= 300 Then\r\n" +
-        "        Err.Raise vbObjectError + 1011, , \"Preuzimanje XLSM fajla nije uspelo: HTTP \" & http.Status\r\n" +
-        "    End If\r\n" +
-        "    Set stream = CreateObject(\"ADODB.Stream\")\r\n" +
-        "    stream.Type = 1\r\n" +
-        "    stream.Open\r\n" +
-        "    stream.Write http.responseBody\r\n" +
-        "    stream.SaveToFile tempPath, 2\r\n" +
-        "    stream.Close\r\n" +
-        "    DownloadUpdate = tempPath\r\n" +
-        "End Function\r\n\r\n" +
-
-        "Private Function FileSha256(ByVal filePath As String) As String\r\n" +
-        "    Dim outputPath As String\r\n" +
-        "    Dim shell As Object\r\n" +
-        "    Dim fso As Object\r\n" +
-        "    Dim ts As Object\r\n" +
-        "    Dim text As String\r\n" +
-        "    Dim matches As Object\r\n" +
-        "    Dim re As Object\r\n" +
-        "    outputPath = Environ$(\"TEMP\") & \"PCD-sha256-\" & Format$(Timer * 1000, \"0\") & \".txt\"\r\n" +
-        "    Set shell = CreateObject(\"WScript.Shell\")\r\n" +
-        "    shell.Run \"cmd.exe /c certutil -hashfile \" & QuoteArg(filePath) & \" SHA256 > \" & QuoteArg(outputPath), 0, True\r\n" +
-        "    Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n" +
-        "    If Not fso.FileExists(outputPath) Then Err.Raise vbObjectError + 1012, , \"Windows nije mogao da izracuna SHA-256.\"\r\n" +
-        "    Set ts = fso.OpenTextFile(outputPath, 1, False)\r\n" +
-        "    text = ts.ReadAll\r\n" +
-        "    ts.Close\r\n" +
-        "    On Error Resume Next\r\n" +
-        "    fso.DeleteFile outputPath, True\r\n" +
-        "    On Error GoTo 0\r\n" +
-        "    Set re = CreateObject(\"VBScript.RegExp\")\r\n" +
-        "    re.Global = False\r\n" +
-        "    re.IgnoreCase = True\r\n" +
-        "    re.Pattern = \"([0-9A-Fa-f]{64})\"\r\n" +
-        "    Set matches = re.Execute(text)\r\n" +
-        "    If matches.Count = 0 Then Err.Raise vbObjectError + 1013, , \"Windows nije vratio SHA-256 vrednost.\"\r\n" +
-        "    FileSha256 = LCase$(matches(0).Value)\r\n" +
-        "End Function\r\n\r\n" +
-
-        "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String)\r\n" +
-        "    Dim scriptPath As String\r\n" +
-        "    Dim logPath As String\r\n" +
-        "    Dim scriptText As String\r\n" +
-        "    Dim fso As Object\r\n" +
-        "    Dim ts As Object\r\n" +
-        "    Dim shell As Object\r\n" +
-        "\r\n" +
-        "    scriptPath = Environ$(\"TEMP\") & \"\\PCD-Excel-updater.vbs\"\r\n" +
-        "    logPath = Environ$(\"TEMP\") & \"\\PCD-Excel-updater.log\"\r\n" +
-        "\r\n" +
-        "    On Error GoTo CreateError\r\n" +
-        "\r\n" +
-        "    Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n" +
-        "\r\n" +
-        "    On Error Resume Next\r\n" +
-        "    If fso.FileExists(logPath) Then fso.DeleteFile logPath, True\r\n" +
-        "    On Error GoTo CreateError\r\n" +
-        "\r\n" +
-        "    scriptText = \"Option Explicit\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"Dim fso, shell, newFile, oldFile, logPath, i, replaced\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"Set fso = CreateObject(\"\"Scripting.FileSystemObject\"\")\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"Set shell = CreateObject(\"\"WScript.Shell\"\")\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"newFile = WScript.Arguments(0)\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"oldFile = WScript.Arguments(1)\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"logPath = WScript.Arguments(2)\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"LogLine \"\"START\"\"\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"LogLine \"\"NEW=\"\" & newFile\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"LogLine \"\"OLD=\"\" & oldFile\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"For i = 1 To 120\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  On Error Resume Next\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  Err.Clear\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  If Err.Number = 0 Then\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"    LogLine \"\"DELETE OK attempt=\"\" & i\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"    Err.Clear\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"    fso.MoveFile newFile, oldFile\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"    If Err.Number = 0 Then\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"      replaced = True\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"      LogLine \"\"MOVE OK attempt=\"\" & i\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"      Exit For\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"    Else\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"      LogLine \"\"MOVE ERROR \"\" & Err.Number & \"\" \"\" & Err.Description\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"    End If\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  Else\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"    LogLine \"\"DELETE ERROR \"\" & Err.Number & \"\" \"\" & Err.Description\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  End If\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  Err.Clear\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  On Error GoTo 0\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  WScript.Sleep 1000\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"Next\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"If replaced Then\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  LogLine \"\"REPLACED OK\"\"\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  LogLine \"\"LAUNCHING \"\" & oldFile\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  shell.Run Chr(34) & oldFile & Chr(34), 1, False\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"Else\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  LogLine \"\"REPLACEMENT FAILED after 120 attempts\"\"\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"End If\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"LogLine \"\"END\"\"\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"Sub LogLine(ByVal message)\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  Dim logFile\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  On Error Resume Next\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  Set logFile = fso.OpenTextFile(logPath, 8, True)\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  logFile.WriteLine Now & \"\" | \"\" & message\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"  logFile.Close\" & vbCrLf\r\n" +
-        "    scriptText = scriptText & \"End Sub\"\r\n" +
-        "    scriptText = scriptText & vbCrLf\r\n" +
-        "    Set ts = fso.CreateTextFile(scriptPath, True, False)\r\n" +
-        "    ts.Write scriptText\r\n" +
-        "    ts.Close\r\n" +
-        "\r\n" +
-        "    If Not fso.FileExists(scriptPath) Then\r\n" +
-        "        Err.Raise vbObjectError + 1020, , \"Updater nije uspeo da napravi VBS fajl.\"\r\n" +
-        "    End If\r\n" +
-        "\r\n" +
-        "    Set shell = CreateObject(\"WScript.Shell\")\r\n" +
-        "    shell.Run \"wscript.exe \" & QuoteArg(scriptPath) & \" \" & _\r\n" +
-        "              QuoteArg(newFile) & \" \" & QuoteArg(oldFile) & \" \" & _\r\n" +
-        "              QuoteArg(logPath), 0, False\r\n" +
-        "    Exit Sub\r\n" +
-        "\r\n" +
-        "CreateError:\r\n" +
-        "    Err.Raise vbObjectError + 1021, , \"Updater nije uspeo da pripremi eksterni updater.\" & vbCrLf & Err.Description\r\n" +
-        "End Sub\r\n\r\n" +
-
-        "Private Function QuoteArg(ByVal value As String) As String\r\n" +
-        "    QuoteArg = Chr(34) & Replace(value, Chr(34), Chr(34) & Chr(34)) & Chr(34)\r\n" +
-        "End Function\r\n"
+        updater + "\r\n\r\n" +
+        magic + "\r\n"
 
     foundModule1, foundSheet2 := false, false
 
@@ -387,7 +154,7 @@ func main() {
                 "Public Sub CheckForUpdate()",
             ) {
                 panic(
-                    "post-write VBA validation: CheckForUpdate stub missing",
+                    "post-write VBA validation: CheckForUpdate missing",
                 )
             }
 
@@ -432,12 +199,12 @@ func main() {
                 )
             }
 
-            if strings.Contains(
+            if !strings.Contains(
                 m.Source,
                 "Dim localSha256 As String",
             ) {
                 panic(
-                    "post-write VBA validation: full updater code unexpectedly present in DEV-28",
+                    "post-write VBA validation: real updater code is incomplete",
                 )
             }
 
