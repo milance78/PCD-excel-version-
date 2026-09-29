@@ -127,7 +127,10 @@ func checkVBABlockStructure(moduleName, source string) {
 		}
 
 		if strings.HasPrefix(l, "for ") {
-			stack = append(stack, blockFrame{"For", lineNo})
+			// VBA also permits compact For/Next statements on one line.
+			if !strings.Contains(l, ": next") && !strings.HasSuffix(l, " next") {
+				stack = append(stack, blockFrame{"For", lineNo})
+			}
 		}
 
 		if l == "do" || strings.HasPrefix(l, "do ") {
