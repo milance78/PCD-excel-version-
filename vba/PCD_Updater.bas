@@ -122,7 +122,7 @@ Private Function DownloadUpdate(ByVal remoteVersion As String) As String
     Dim stream As Object
     Dim tempPath As String
 
-    tempPath = Environ$("TEMP") & "\PCD-Excel-update- & Replace(remoteVersion, ".", "_") & ".xlsm"
+    tempPath = Environ$("TEMP") & "\PCD-Excel-update-" & Replace(remoteVersion, ".", "_") & ".xlsm"
 
     On Error Resume Next
     Kill tempPath
@@ -156,7 +156,7 @@ Private Function FileSha256(ByVal filePath As String) As String
     Dim matches As Object
     Dim re As Object
 
-    outputPath = Environ$("TEMP") & "\PCD-sha256- & Format$(Timer * 1000, "0") & ".txt"
+    outputPath = Environ$("TEMP") & "\PCD-sha256-" & Format$(Timer * 1000, "0") & ".txt"
 
     Set shell = CreateObject("WScript.Shell")
     shell.Run "cmd.exe /c certutil -hashfile " & QuoteArg(filePath) & " SHA256 > " & QuoteArg(outputPath), 0, True
