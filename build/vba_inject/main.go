@@ -273,7 +273,7 @@ func main() {
         "    scriptText = scriptText & \"  logFile.WriteLine Now & \"\" | \"\" & message\" & vbCrLf\r\n" +
         "    scriptText = scriptText & \"  logFile.Close\" & vbCrLf\r\n" +
         "    scriptText = scriptText & \"End Sub\"\r\n" +
-        "    scriptText = scriptText & \r\n" +
+        "    scriptText = scriptText & vbCrLf\r\n" +
         "    Set ts = fso.CreateTextFile(scriptPath, True, False)\r\n" +
         "    ts.Write scriptText\r\n" +
         "    ts.Close\r\n" +
