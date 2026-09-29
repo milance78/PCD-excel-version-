@@ -42,8 +42,8 @@ func main() {
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
     _ = updaterPath
 
-    // DEV-26 diagnostic: add DownloadUpdate, but do not call it.
-    // This isolates whether DownloadUpdate and ADODB.Stream make Module1 unloadable.
+    // DEV-27 diagnostic: add FileSha256, but do not call it.
+    // This isolates whether FileSha256, WScript.Shell, certutil and RegExp make Module1 unloadable.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
         "Private Const VERSION_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json\"\r\n" +
@@ -51,7 +51,7 @@ func main() {
         "Private Const UPDATE_TIMEOUT_SECONDS As Long = 30\r\n" +
         magic + "\r\n\r\n" +
         "Public Sub CheckForUpdate()\r\n" +
-        "    MsgBox \"DEV-26: Module1 loads with DownloadUpdate.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "    MsgBox \"DEV-27: Module1 loads with FileSha256.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
         "End Sub\r\n\r\n" +
         "Private Function HttpGetText(ByVal url As String) As String\r\n" +
         "    Dim http As Object\r\n" +
@@ -136,6 +136,33 @@ func main() {
         "    stream.SaveToFile tempPath, 2\r\n" +
         "    stream.Close\r\n" +
         "    DownloadUpdate = tempPath\r\n" +
+        "End Function\r\n\r\n" +
+        "Private Function FileSha256(ByVal filePath As String) As String\r\n" +
+        "    Dim outputPath As String\r\n" +
+        "    Dim shell As Object\r\n" +
+        "    Dim fso As Object\r\n" +
+        "    Dim ts As Object\r\n" +
+        "    Dim text As String\r\n" +
+        "    Dim matches As Object\r\n" +
+        "    Dim re As Object\r\n" +
+        "    outputPath = Environ$(\"TEMP\") & \"PCD-sha256-\" & Format$(Timer * 1000, \"0\") & \".txt\"\r\n" +
+        "    Set shell = CreateObject(\"WScript.Shell\")\r\n" +
+        "    shell.Run \"cmd.exe /c certutil -hashfile \" & QuoteArg(filePath) & \" SHA256 > \" & QuoteArg(outputPath), 0, True\r\n" +
+        "    Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n" +
+        "    If Not fso.FileExists(outputPath) Then Err.Raise vbObjectError + 1012, , \"Windows nije mogao da izracuna SHA-256.\"\r\n" +
+        "    Set ts = fso.OpenTextFile(outputPath, 1, False)\r\n" +
+        "    text = ts.ReadAll\r\n" +
+        "    ts.Close\r\n" +
+        "    On Error Resume Next\r\n" +
+        "    fso.DeleteFile outputPath, True\r\n" +
+        "    On Error GoTo 0\r\n" +
+        "    Set re = CreateObject(\"VBScript.RegExp\")\r\n" +
+        "    re.Global = False\r\n" +
+        "    re.IgnoreCase = True\r\n" +
+        "    re.Pattern = \"([0-9A-Fa-f]{64})\"\r\n" +
+        "    Set matches = re.Execute(text)\r\n" +
+        "    If matches.Count = 0 Then Err.Raise vbObjectError + 1013, , \"Windows nije vratio SHA-256 vrednost.\"\r\n" +
+        "    FileSha256 = LCase$(matches(0).Value)\r\n" +
         "End Function\r\n"
 
     foundModule1, foundSheet2 := false, false
@@ -181,11 +208,11 @@ func main() {
             if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
                 panic("post-write VBA validation: CheckForUpdate stub missing")
             }
-            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") || !strings.Contains(m.Source, "Private Function JsonValue(ByVal json As String, ByVal key As String)") || !strings.Contains(m.Source, "Private Function CompareVersions(ByVal a As String, ByVal b As String)") || !strings.Contains(m.Source, "Private Function DownloadUpdate(ByVal remoteVersion As String)") {
-                panic("post-write VBA validation: DEV-26 updater declarations missing")
+            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") || !strings.Contains(m.Source, "Private Function JsonValue(ByVal json As String, ByVal key As String)") || !strings.Contains(m.Source, "Private Function CompareVersions(ByVal a As String, ByVal b As String)") || !strings.Contains(m.Source, "Private Function DownloadUpdate(ByVal remoteVersion As String)") || !strings.Contains(m.Source, "Private Function FileSha256(ByVal filePath As String)") {
+                panic("post-write VBA validation: DEV-27 updater declarations missing")
             }
             if strings.Contains(m.Source, "Dim localSha256 As String") {
-                panic("post-write VBA validation: full updater code unexpectedly present in DEV-26")
+                panic("post-write VBA validation: full updater code unexpectedly present in DEV-27")
             }
             firstProc := len(m.Source)
             for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
