@@ -42,8 +42,8 @@ func main() {
     magic := stripNameAndOptionExplicit(string(read(magicPath)))
     _ = updaterPath
 
-    // DEV-24 diagnostic: add updater constants, HttpGetText and JsonValue, but do not call them.
-    // This isolates whether JsonValue or its RegExp code makes Module1 unloadable.
+    // DEV-25 diagnostic: add version comparison functions, but do not call them.
+    // This isolates whether the version comparison functions make Module1 unloadable.
     module1Source := "Attribute VB_Name = \"Module1\"\r\n" +
         "Option Explicit\r\n" +
         "Private Const VERSION_URL As String = \"https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json\"\r\n" +
@@ -51,7 +51,7 @@ func main() {
         "Private Const UPDATE_TIMEOUT_SECONDS As Long = 30\r\n" +
         magic + "\r\n\r\n" +
         "Public Sub CheckForUpdate()\r\n" +
-        "    MsgBox \"DEV-24: Module1 loads with JsonValue.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
+        "    MsgBox \"DEV-25: Module1 loads with version comparison functions.\", vbInformation, \"PCD DIJAGNOSTIKA\"\r\n" +
         "End Sub\r\n\r\n" +
         "Private Function HttpGetText(ByVal url As String) As String\r\n" +
         "    Dim http As Object\r\n" +
@@ -73,6 +73,46 @@ func main() {
         "    re.Pattern = \"\"\"\" & key & \"\"\"\" & \"\\\\s*:\\\\s*\"\"\"([^\"\"]*)\"\"\"\"\r\n" +
         "    Set matches = re.Execute(json)\r\n" +
         "    If matches.Count > 0 Then JsonValue = matches(0).SubMatches(0)\r\n" +
+        "End Function\r\n\r\n" +
+        "Private Function CompareVersions(ByVal a As String, ByVal b As String) As Long\r\n" +
+        "    Dim pa() As String, pb() As String\r\n" +
+        "    Dim i As Long, na As Long, nb As Long\r\n" +
+        "    Dim aCore As String, bCore As String\r\n" +
+        "    aCore = Split(a, \"-\")(0)\r\n" +
+        "    bCore = Split(b, \"-\")(0)\r\n" +
+        "    pa = Split(aCore, \".\")\r\n" +
+        "    pb = Split(bCore, \".\")\r\n" +
+        "    For i = 0 To 2\r\n" +
+        "        na = 0: nb = 0\r\n" +
+        "        If i <= UBound(pa) And IsNumeric(pa(i)) Then na = CLng(pa(i))\r\n" +
+        "        If i <= UBound(pb) And IsNumeric(pb(i)) Then nb = CLng(pb(i))\r\n" +
+        "        If na > nb Then CompareVersions = 1: Exit Function\r\n" +
+        "        If na < nb Then CompareVersions = -1: Exit Function\r\n" +
+        "    Next i\r\n" +
+        "    CompareVersions = CompareBuildSuffix(a, b)\r\n" +
+        "End Function\r\n\r\n" +
+        "Private Function CompareBuildSuffix(ByVal a As String, ByVal b As String) As Long\r\n" +
+        "    Dim da As Long, db As Long\r\n" +
+        "    da = LastNumberAfterDash(a)\r\n" +
+        "    db = LastNumberAfterDash(b)\r\n" +
+        "    If da > db Then\r\n" +
+        "        CompareBuildSuffix = 1\r\n" +
+        "    ElseIf da < db Then\r\n" +
+        "        CompareBuildSuffix = -1\r\n" +
+        "    Else\r\n" +
+        "        CompareBuildSuffix = 0\r\n" +
+        "    End If\r\n" +
+        "End Function\r\n\r\n" +
+        "Private Function LastNumberAfterDash(ByVal value As String) As Long\r\n" +
+        "    Dim parts() As String\r\n" +
+        "    Dim i As Long\r\n" +
+        "    parts = Split(value, \"-\")\r\n" +
+        "    For i = UBound(parts) To 1 Step -1\r\n" +
+        "        If IsNumeric(parts(i)) Then\r\n" +
+        "            LastNumberAfterDash = CLng(parts(i))\r\n" +
+        "            Exit Function\r\n" +
+        "        End If\r\n" +
+        "    Next i\r\n" +
         "End Function\r\n"
 
     foundModule1, foundSheet2 := false, false
@@ -118,11 +158,11 @@ func main() {
             if !strings.Contains(m.Source, "Public Sub CheckForUpdate()") {
                 panic("post-write VBA validation: CheckForUpdate stub missing")
             }
-            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") || !strings.Contains(m.Source, "Private Function JsonValue(ByVal json As String, ByVal key As String)") {
-                panic("post-write VBA validation: DEV-24 updater declarations missing")
+            if !strings.Contains(m.Source, "Private Const VERSION_URL As String") || !strings.Contains(m.Source, "Private Const ARTIFACT_URL As String") || !strings.Contains(m.Source, "Private Function HttpGetText(ByVal url As String)") || !strings.Contains(m.Source, "Private Function JsonValue(ByVal json As String, ByVal key As String)") || !strings.Contains(m.Source, "Private Function CompareVersions(ByVal a As String, ByVal b As String)") {
+                panic("post-write VBA validation: DEV-25 updater declarations missing")
             }
             if strings.Contains(m.Source, "Dim localSha256 As String") {
-                panic("post-write VBA validation: full updater code unexpectedly present in DEV-24")
+                panic("post-write VBA validation: full updater code unexpectedly present in DEV-25")
             }
             firstProc := len(m.Source)
             for _, token := range []string{"Private Function ", "Public Function ", "Private Sub ", "Public Sub "} {
