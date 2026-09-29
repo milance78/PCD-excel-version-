@@ -69,7 +69,7 @@ jobs:
           unzip -p "$FILE" xl/vbaProject.bin > build/final-vbaProject.bin
           test -s build/final-vbaProject.bin
           cd build/vba_inject
-          go run ./validatecmd ../../build/final-vbaProject.bin "DEV-26: Module1 loads with DownloadUpdate."
+          go run ./validatecmd ../../build/final-vbaProject.bin "DEV-27: Module1 loads with FileSha256."
 
       - name: Publish artifact and checksum
         run: |
