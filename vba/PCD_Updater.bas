@@ -377,7 +377,9 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     launchParams = QuoteArg(scriptPath) & " " & QuoteArg(newFile) & " " & _
                    QuoteArg(oldFile) & " " & QuoteArg(CStr(processId)) & " " & QuoteArg(logPath)
 
+    LogUpdaterLaunch "BEFORE SHELLEXECUTE", wscriptPath, launchParams
     shellResult = ShellExecute(0, "open", wscriptPath, launchParams, vbNullString, 0)
+    LogUpdaterLaunch "AFTER SHELLEXECUTE=" & CStr(shellResult), wscriptPath, launchParams
     If shellResult <= 32 Then
         Err.Raise vbObjectError + 1022, , _
             "Windows nije mogao da pokrene updater. ShellExecute=" & CStr(shellResult)
@@ -396,3 +398,19 @@ End Sub
 Private Function QuoteArg(ByVal value As String) As String
     QuoteArg = Chr(34) & Replace(value, Chr(34), Chr(34) & Chr(34)) & Chr(34)
 End Function
+
+
+Private Sub LogUpdaterLaunch(ByVal stage As String, ByVal wscriptPath As String, ByVal launchParams As String)
+    Dim fso As Object
+    Dim ts As Object
+    Dim p As String
+
+    On Error Resume Next
+    p = Environ$("TEMP") & "\PCD-Excel-launch.log"
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set ts = fso.OpenTextFile(p, 8, True)
+    ts.WriteLine Now & " | " & stage
+    ts.WriteLine "WSCRIPT=" & wscriptPath
+    ts.WriteLine "PARAMS=" & launchParams
+    ts.Close
+End Sub
