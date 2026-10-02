@@ -27,6 +27,8 @@ Public Sub CheckForUpdate()
     Dim remoteSha256 As String
     Dim manifestText As String
     Dim tempPath As String
+    Dim stagedPath As String
+    Dim stageFso As Object
     Dim answer As VbMsgBoxResult
     Dim localSha256 As String
     Dim cacheBust As String
@@ -110,7 +112,21 @@ Public Sub CheckForUpdate()
         Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
 
-    ScheduleReplacement tempPath, ThisWorkbook.FullName, CurrentExcelProcessId
+    ' Stage the verified XLSM beside the open workbook before Excel closes.
+    ' The external updater then only has to rename files on the same volume.
+    stagedPath = ThisWorkbook.FullName & ".pcd-new"
+    Set stageFso = CreateObject("Scripting.FileSystemObject")
+    If stageFso.FileExists(stagedPath) Then stageFso.DeleteFile stagedPath, True
+    stageFso.CopyFile tempPath, stagedPath, True
+    If LCase$(FileSha256(stagedPath)) <> remoteSha256 Then
+        stageFso.DeleteFile stagedPath, True
+        Err.Raise vbObjectError + 1006, , "Proverena kopija nije ista kao preuzeti XLSM."
+    End If
+    On Error Resume Next
+    stageFso.DeleteFile tempPath, True
+    On Error GoTo UpdateError
+
+    ScheduleReplacement stagedPath, ThisWorkbook.FullName, CurrentExcelProcessId
     Application.StatusBar = False
     MsgBox "Nova verzija je preuzeta i proverena." & vbCrLf & vbCrLf & _
            "Excel ce sada zatvoriti staru verziju, zameniti je novom i ponovo je otvoriti.", _
@@ -306,15 +322,12 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     Dim ts As Object
     Dim shell As Object
 
-    ' Keep the processId argument for compatibility with the build validator.
-    ' The detached CMD performs the replacement after Excel has released the file.
     scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
     cmdPath = Environ$("TEMP") & "\PCD-Excel-updater.cmd"
     logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
     backupFile = oldFile & ".pcd-old"
 
     On Error GoTo CreateError
-
     Set fso = CreateObject("Scripting.FileSystemObject")
 
     On Error Resume Next
@@ -324,11 +337,10 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     If fso.FileExists(backupFile) Then fso.DeleteFile backupFile, True
     On Error GoTo CreateError
 
-    ' VBS launches the detached CMD and passes every replacement argument to it.
     scriptText = "Option Explicit" & vbCrLf
     AppendVbsLine scriptText, "Dim shell"
     AppendVbsLine scriptText, "Set shell = CreateObject(""WScript.Shell"")"
-    AppendVbsLine scriptText, "shell.Run ""cmd.exe /c call "" & Q(WScript.Arguments(0)) & "" "" & Q(WScript.Arguments(1)) & "" "" & Q(WScript.Arguments(2)) & "" "" & Q(WScript.Arguments(3)) & "" "" & Q(WScript.Arguments(4)), 0, False"
+    AppendVbsLine scriptText, "shell.Run ""cmd.exe /d /c call "" & Q(WScript.Arguments(0)) & "" "" & Q(WScript.Arguments(1)) & "" "" & Q(WScript.Arguments(2)) & "" "" & Q(WScript.Arguments(3)), 0, False"
     AppendVbsLine scriptText, "Function Q(ByVal value)"
     AppendVbsLine scriptText, "Q = Chr(34) & Replace(value, Chr(34), Chr(34) & Chr(34)) & Chr(34)"
     AppendVbsLine scriptText, "End Function"
@@ -344,21 +356,19 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     cmdText = cmdText & "set ""BACKUP=%~3""" & vbCrLf
     cmdText = cmdText & "set ""LOG=%~4""" & vbCrLf
     cmdText = cmdText & "call :log START" & vbCrLf
+    cmdText = cmdText & "if not exist ""%NEW%"" (call :log NEW_MISSING & exit /b 10)" & vbCrLf
     cmdText = cmdText & "for /L %%I in (1,1,120) do (" & vbCrLf
-    cmdText = cmdText & "  if exist ""%OLD%"" (" & vbCrLf
-    cmdText = cmdText & "    move /Y ""%OLD%"" ""%BACKUP%"" >nul 2>&1" & vbCrLf
-    cmdText = cmdText & "  )" & vbCrLf
+    cmdText = cmdText & "  if exist ""%OLD%"" move /Y ""%OLD%"" ""%BACKUP%"" >nul 2>&1" & vbCrLf
     cmdText = cmdText & "  if exist ""%BACKUP%"" (" & vbCrLf
-    cmdText = cmdText & "    copy /Y ""%NEW%"" ""%OLD%"" >nul 2>&1" & vbCrLf
+    cmdText = cmdText & "    move /Y ""%NEW%"" ""%OLD%"" >nul 2>&1" & vbCrLf
     cmdText = cmdText & "    if exist ""%OLD%"" (" & vbCrLf
     cmdText = cmdText & "      call :log REPLACED" & vbCrLf
-    cmdText = cmdText & "      del /Q ""%NEW%"" >nul 2>&1" & vbCrLf
-    cmdText = cmdText & "      timeout /t 1 /nobreak >nul" & vbCrLf
-    cmdText = cmdText & "      start """" ""%OLD%""" & vbCrLf
+    cmdText = cmdText & "      start """" /d ""%~dp2"" ""%OLD%""" & vbCrLf
     cmdText = cmdText & "      call :log LAUNCHED" & vbCrLf
     cmdText = cmdText & "      del /Q ""%BACKUP%"" >nul 2>&1" & vbCrLf
     cmdText = cmdText & "      exit /b 0" & vbCrLf
     cmdText = cmdText & "    )" & vbCrLf
+    cmdText = cmdText & "    move /Y ""%BACKUP%"" ""%OLD%"" >nul 2>&1" & vbCrLf
     cmdText = cmdText & "  )" & vbCrLf
     cmdText = cmdText & "  timeout /t 1 /nobreak >nul" & vbCrLf
     cmdText = cmdText & ")" & vbCrLf
@@ -373,9 +383,8 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     ts.Close
 
     Set shell = CreateObject("WScript.Shell")
-    shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & _
-              QuoteArg(cmdPath) & " " & QuoteArg(newFile) & " " & _
-              QuoteArg(oldFile) & " " & QuoteArg(backupFile) & " " & _
+    shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & QuoteArg(cmdPath) & " " & _
+              QuoteArg(newFile) & " " & QuoteArg(oldFile) & " " & QuoteArg(backupFile) & " " & _
               QuoteArg(logPath), 0, False
     Exit Sub
 
