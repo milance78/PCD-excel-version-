@@ -97,10 +97,6 @@ Public Sub CheckForUpdate()
     ScheduleReplacement tempPath, ThisWorkbook.FullName, CurrentExcelProcessId
     Application.StatusBar = False
 
-    MsgBox "Nova verzija je preuzeta i proverena." & vbCrLf & vbCrLf & _
-           "Excel ce sada zatvoriti staru verziju, zameniti je novom i ponovo je otvoriti.", _
-           vbInformation, "PCD Excel - azuriranje"
-
     Application.DisplayAlerts = False
     On Error Resume Next
     ThisWorkbook.Saved = True
