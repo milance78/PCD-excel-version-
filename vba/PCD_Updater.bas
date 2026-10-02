@@ -102,8 +102,12 @@ Public Sub CheckForUpdate()
            vbInformation, "PCD Excel - azuriranje"
 
     Application.DisplayAlerts = False
+    On Error Resume Next
     ThisWorkbook.Saved = True
+    Err.Clear
     Application.Quit
+    Err.Clear
+    On Error GoTo 0
     Exit Sub
 
 UpdateError:
