@@ -1,7 +1,7 @@
 Attribute VB_Name = "PCD_Updater"
 Option Explicit
 
-Private Const VERSION_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json"
+Private Const VERSION_URL As String = "https://api.github.com/repos/milance78/PCD-excel-version-/contents/VERSION.json?ref=main"
 Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-latest.xlsm"
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
@@ -39,7 +39,7 @@ Public Sub CheckForUpdate()
     Application.StatusBar = "PCD Excel: proveravam novu verziju..."
     cacheBust = CStr(Timer)
 
-    manifestText = HttpGetText(VERSION_URL & "?t=" & cacheBust)
+    manifestText = Base64Decode(JsonValue(HttpGetText(VERSION_URL & "&t=" & cacheBust), "content"))
     remoteVersion = JsonValue(manifestText, "version")
     remoteSha256 = LCase$(JsonValue(manifestText, "sha256"))
 
@@ -194,6 +194,31 @@ Private Function FileSha256(ByVal filePath As String) As String
 
     If matches.Count = 0 Then Err.Raise vbObjectError + 1013, , "Windows nije vratio SHA-256 vrednost."
     FileSha256 = LCase$(matches(0).Value)
+End Function
+
+Private Function Base64Decode(ByVal encoded As String) As String
+    Dim xml As Object
+    Dim node As Object
+    Dim bytes() As Byte
+    Dim stream As Object
+
+    encoded = Replace(encoded, vbCr, "")
+    encoded = Replace(encoded, vbLf, "")
+    Set xml = CreateObject("MSXML2.DOMDocument.6.0")
+    Set node = xml.createElement("b64")
+    node.DataType = "bin.base64"
+    node.Text = encoded
+    bytes = node.nodeTypedValue
+
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 1
+    stream.Open
+    stream.Write bytes
+    stream.Position = 0
+    stream.Type = 2
+    stream.Charset = "utf-8"
+    Base64Decode = stream.ReadText
+    stream.Close
 End Function
 
 Private Function JsonValue(ByVal json As String, ByVal key As String) As String
