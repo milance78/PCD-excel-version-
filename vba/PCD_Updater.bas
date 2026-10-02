@@ -48,12 +48,8 @@ Public Sub CheckForUpdate()
 
     If CompareVersions(remoteVersion, currentVersion) <= 0 Then
         Application.StatusBar = False
-        MsgBox "DEBUG UPDATE" & vbCrLf & vbCrLf & _
-               "Lokalna verzija: [" & currentVersion & "]" & vbCrLf & _
-               "Remote verzija: [" & remoteVersion & "]" & vbCrLf & _
-               "Lokalni build: " & CStr(BuildNumber(currentVersion)) & vbCrLf & _
-               "Remote build: " & CStr(BuildNumber(remoteVersion)), _
-               vbExclamation, "PCD Excel - dijagnostika"
+        MsgBox "Koristis najnoviju dostupnu verziju: " & currentVersion, _
+               vbInformation, "PCD Excel"
         Exit Sub
     End If
 
