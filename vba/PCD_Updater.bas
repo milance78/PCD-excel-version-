@@ -313,83 +313,78 @@ End Function
 
 Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String, ByVal processId As Long)
     Dim scriptPath As String
-    Dim cmdPath As String
     Dim logPath As String
-    Dim backupFile As String
     Dim scriptText As String
-    Dim cmdText As String
     Dim fso As Object
     Dim ts As Object
     Dim shell As Object
 
     scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
-    cmdPath = Environ$("TEMP") & "\PCD-Excel-updater.cmd"
     logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
-    backupFile = oldFile & ".pcd-old"
 
     On Error GoTo CreateError
     Set fso = CreateObject("Scripting.FileSystemObject")
 
     On Error Resume Next
     If fso.FileExists(logPath) Then fso.DeleteFile logPath, True
-    If fso.FileExists(cmdPath) Then fso.DeleteFile cmdPath, True
     If fso.FileExists(scriptPath) Then fso.DeleteFile scriptPath, True
-    If fso.FileExists(backupFile) Then fso.DeleteFile backupFile, True
     On Error GoTo CreateError
 
     scriptText = "Option Explicit" & vbCrLf
-    AppendVbsLine scriptText, "Dim shell"
+    AppendVbsLine scriptText, "Dim fso, shell, xl, wb, logPath"
+    AppendVbsLine scriptText, "Set fso = CreateObject(""Scripting.FileSystemObject"")"
     AppendVbsLine scriptText, "Set shell = CreateObject(""WScript.Shell"")"
-    AppendVbsLine scriptText, "shell.Run ""cmd.exe /d /c call "" & Q(WScript.Arguments(0)) & "" "" & Q(WScript.Arguments(1)) & "" "" & Q(WScript.Arguments(2)) & "" "" & Q(WScript.Arguments(3)), 0, False"
-    AppendVbsLine scriptText, "Function Q(ByVal value)"
-    AppendVbsLine scriptText, "Q = Chr(34) & Replace(value, Chr(34), Chr(34) & Chr(34)) & Chr(34)"
-    AppendVbsLine scriptText, "End Function"
+    AppendVbsLine scriptText, "logPath = WScript.Arguments(3)"
+    AppendVbsLine scriptText, "LogLine ""START"""
+    AppendVbsLine scriptText, "LogLine ""NEW="" & WScript.Arguments(0)"
+    AppendVbsLine scriptText, "LogLine ""OLD="" & WScript.Arguments(1)"
+    AppendVbsLine scriptText, "WScript.Sleep 5000"
+    AppendVbsLine scriptText, "LogLine ""STARTING EXCEL COM"""
+    AppendVbsLine scriptText, "On Error Resume Next"
+    AppendVbsLine scriptText, "Set xl = CreateObject(""Excel.Application"")"
+    AppendVbsLine scriptText, "If Err.Number <> 0 Then LogLine ""EXCEL CREATE ERROR "" & Err.Number & "" "" & Err.Description: WScript.Quit 10"
+    AppendVbsLine scriptText, "Err.Clear"
+    AppendVbsLine scriptText, "xl.Visible = False"
+    AppendVbsLine scriptText, "xl.DisplayAlerts = False"
+    AppendVbsLine scriptText, "xl.AskToUpdateLinks = False"
+    AppendVbsLine scriptText, "LogLine ""OPENING NEW XLSM"""
+    AppendVbsLine scriptText, "Set wb = xl.Workbooks.Open(WScript.Arguments(0), 0, False)"
+    AppendVbsLine scriptText, "If Err.Number <> 0 Then LogLine ""OPEN ERROR "" & Err.Number & "" "" & Err.Description: xl.Quit: WScript.Quit 11"
+    AppendVbsLine scriptText, "Err.Clear"
+    AppendVbsLine scriptText, "LogLine ""SAVING TO SHAREPOINT URL"""
+    AppendVbsLine scriptText, "wb.SaveAs WScript.Arguments(1), 52, , , False, False, 1, 2, False"
+    AppendVbsLine scriptText, "If Err.Number <> 0 Then LogLine ""SAVEAS ERROR "" & Err.Number & "" "" & Err.Description: wb.Close False: xl.Quit: WScript.Quit 12"
+    AppendVbsLine scriptText, "Err.Clear"
+    AppendVbsLine scriptText, "LogLine ""SAVEAS OK"""
+    AppendVbsLine scriptText, "wb.Close False"
+    AppendVbsLine scriptText, "Set wb = Nothing"
+    AppendVbsLine scriptText, "LogLine ""OPENING SHAREPOINT COPY"""
+    AppendVbsLine scriptText, "Set wb = xl.Workbooks.Open(WScript.Arguments(1), 0, False)"
+    AppendVbsLine scriptText, "If Err.Number <> 0 Then LogLine ""REOPEN ERROR "" & Err.Number & "" "" & Err.Description: xl.Quit: WScript.Quit 13"
+    AppendVbsLine scriptText, "Err.Clear"
+    AppendVbsLine scriptText, "xl.Visible = True"
+    AppendVbsLine scriptText, "LogLine ""REOPEN OK"""
+    AppendVbsLine scriptText, "LogLine ""END"""
+    AppendVbsLine scriptText, "Exit Sub"
+    AppendVbsLine scriptText, "Sub LogLine(ByVal value)"
+    AppendVbsLine scriptText, "On Error Resume Next"
+    AppendVbsLine scriptText, "Dim t"
+    AppendVbsLine scriptText, "Set t = fso.OpenTextFile(logPath, 8, True)"
+    AppendVbsLine scriptText, "t.WriteLine Now & "" | "" & value"
+    AppendVbsLine scriptText, "t.Close"
+    AppendVbsLine scriptText, "End Sub"
 
     Set ts = fso.CreateTextFile(scriptPath, True, False)
     ts.Write scriptText
     ts.Close
 
-    cmdText = "@echo off" & vbCrLf
-    cmdText = cmdText & "setlocal" & vbCrLf
-    cmdText = cmdText & "set ""NEW=%~1""" & vbCrLf
-    cmdText = cmdText & "set ""OLD=%~2""" & vbCrLf
-    cmdText = cmdText & "set ""BACKUP=%~3""" & vbCrLf
-    cmdText = cmdText & "set ""LOG=%~4""" & vbCrLf
-    cmdText = cmdText & "call :log START" & vbCrLf
-    cmdText = cmdText & "if not exist ""%NEW%"" (call :log NEW_MISSING & exit /b 10)" & vbCrLf
-    cmdText = cmdText & "for /L %%I in (1,1,120) do (" & vbCrLf
-    cmdText = cmdText & "  if exist ""%OLD%"" move /Y ""%OLD%"" ""%BACKUP%"" >nul 2>&1" & vbCrLf
-    cmdText = cmdText & "  if exist ""%BACKUP%"" (" & vbCrLf
-    cmdText = cmdText & "    move /Y ""%NEW%"" ""%OLD%"" >nul 2>&1" & vbCrLf
-    cmdText = cmdText & "    if exist ""%OLD%"" (" & vbCrLf
-    cmdText = cmdText & "      call :log REPLACED" & vbCrLf
-    cmdText = cmdText & "      start """" /d ""%~dp2"" ""%OLD%""" & vbCrLf
-    cmdText = cmdText & "      call :log LAUNCHED" & vbCrLf
-    cmdText = cmdText & "      del /Q ""%BACKUP%"" >nul 2>&1" & vbCrLf
-    cmdText = cmdText & "      exit /b 0" & vbCrLf
-    cmdText = cmdText & "    )" & vbCrLf
-    cmdText = cmdText & "    move /Y ""%BACKUP%"" ""%OLD%"" >nul 2>&1" & vbCrLf
-    cmdText = cmdText & "  )" & vbCrLf
-    cmdText = cmdText & "  timeout /t 1 /nobreak >nul" & vbCrLf
-    cmdText = cmdText & ")" & vbCrLf
-    cmdText = cmdText & "call :log FAILED" & vbCrLf
-    cmdText = cmdText & "exit /b 2" & vbCrLf
-    cmdText = cmdText & ":log" & vbCrLf
-    cmdText = cmdText & "echo %date% %time% - %*>>""%LOG%""" & vbCrLf
-    cmdText = cmdText & "exit /b" & vbCrLf
-
-    Set ts = fso.CreateTextFile(cmdPath, True, False)
-    ts.Write cmdText
-    ts.Close
-
     Set shell = CreateObject("WScript.Shell")
-    shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & QuoteArg(cmdPath) & " " & _
-              QuoteArg(newFile) & " " & QuoteArg(oldFile) & " " & QuoteArg(backupFile) & " " & _
-              QuoteArg(logPath), 0, False
+    shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & QuoteArg(newFile) & " " & _
+              QuoteArg(oldFile) & " " & QuoteArg(CStr(processId)) & " " & QuoteArg(logPath), 0, False
     Exit Sub
 
 CreateError:
-    Err.Raise vbObjectError + 1021, , "Updater nije uspeo da pripremi eksterni updater." & vbCrLf & Err.Description
+    Err.Raise vbObjectError + 1021, , "Updater nije uspeo da pripremi SharePoint updater." & vbCrLf & Err.Description
 End Sub
 
 Private Sub AppendVbsLine(ByRef scriptText As String, ByVal lineText As String)
