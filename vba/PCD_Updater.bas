@@ -6,6 +6,7 @@ Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milanc
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
 Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hwnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+Private Declare PtrSafe Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As LongPtr
 
 Public Sub CheckForUpdate()
     Dim diagPath As String
@@ -309,7 +310,9 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     Dim scriptText As String
     Dim fso As Object
     Dim ts As Object
-    Dim shell As Object
+    Dim shellResult As LongPtr
+    Dim wscriptPath As String
+    Dim launchParams As String
 
     scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
     logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
@@ -370,9 +373,16 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     ts.Write scriptText
     ts.Close
 
-    Set shell = CreateObject("WScript.Shell")
-    shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & QuoteArg(newFile) & " " & _
-              QuoteArg(oldFile) & " " & QuoteArg(CStr(processId)) & " " & QuoteArg(logPath), 0, False
+    wscriptPath = Environ$("WINDIR") & "\System32\wscript.exe"
+    launchParams = QuoteArg(scriptPath) & " " & QuoteArg(newFile) & " " & _
+                   QuoteArg(oldFile) & " " & QuoteArg(CStr(processId)) & " " & QuoteArg(logPath)
+
+    shellResult = ShellExecute(0, "open", wscriptPath, launchParams, vbNullString, 0)
+    If shellResult <= 32 Then
+        Err.Raise vbObjectError + 1022, , _
+            "Windows nije mogao da pokrene updater. ShellExecute=" & CStr(shellResult)
+    End If
+
     Exit Sub
 
 CreateError:
