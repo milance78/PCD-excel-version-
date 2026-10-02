@@ -4,7 +4,7 @@ import xlsxwriter
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "0.1.0-dev-37"
+VERSION = "0.1.0-dev-38"
 OUTPUT = DIST / f"PCD-Excel-Version-{VERSION}.xlsm"
 VBA_BIN = ROOT / "build" / "vbaProject.bin"
 
