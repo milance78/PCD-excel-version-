@@ -332,7 +332,7 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     AppendVbsLine scriptText, "xl.Visible = True"
     AppendVbsLine scriptText, "LogLine ""REOPEN OK"""
     AppendVbsLine scriptText, "LogLine ""END"""
-    AppendVbsLine scriptText, "Exit Sub"
+    AppendVbsLine scriptText, "WScript.Quit 0"
     AppendVbsLine scriptText, "Sub LogLine(ByVal value)"
     AppendVbsLine scriptText, "On Error Resume Next"
     AppendVbsLine scriptText, "Dim t"
