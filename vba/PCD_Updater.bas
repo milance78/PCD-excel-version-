@@ -5,6 +5,8 @@ Private Const VERSION_URL As String = "https://raw.githubusercontent.com/milance
 Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-latest.xlsm"
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
+Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hwnd As LongPtr, ByRef lpdwProcessId As Long) As Long
+
 Public Sub CheckForUpdate()
     Dim diagPath As String
     Dim diagFso As Object
@@ -27,15 +29,73 @@ Public Sub CheckForUpdate()
     Dim remoteSha256 As String
     Dim manifestText As String
     Dim tempPath As String
-    Dim stagedPath As String
-    Dim stageFso As Object
     Dim answer As VbMsgBoxResult
     Dim localSha256 As String
     Dim cacheBust As String
-    Dim attempt As Long
+
+    currentVersion = Trim$(CStr(ThisWorkbook.Worksheets("Intervention en cours").Range("H2").Value))
+    If Len(currentVersion) = 0 Then currentVersion = "0.0.0"
+
+    Application.StatusBar = "PCD Excel: proveravam novu verziju..."
+    cacheBust = CStr(Timer)
+
+    manifestText = HttpGetText(VERSION_URL & "?t=" & cacheBust)
+    remoteVersion = JsonValue(manifestText, "version")
+    remoteSha256 = LCase$(JsonValue(manifestText, "sha256"))
+
+    If Len(remoteVersion) = 0 Then Err.Raise vbObjectError + 1001, , "GitHub nije vratio broj verzije."
+    If Len(remoteSha256) <> 64 Then Err.Raise vbObjectError + 1002, , "GitHub nije vratio ispravan SHA-256."
+
+    If CompareVersions(remoteVersion, currentVersion) <= 0 Then
+        Application.StatusBar = False
+        MsgBox "Koristis najnoviju dostupnu verziju: " & currentVersion, vbInformation, "PCD Excel"
+        Exit Sub
+    End If
+
+    answer = MsgBox( _
+        "Dostupna je nova verzija PCD Excel-a." & vbCrLf & vbCrLf & _
+        "Trenutna: " & currentVersion & vbCrLf & _
+        "Nova: " & remoteVersion & vbCrLf & vbCrLf & _
+        "Da li zelis da je preuzmem i instaliram?", _
+        vbQuestion + vbYesNo, "PCD Excel - azuriranje")
+
+    If answer <> vbYes Then
+        Application.StatusBar = False
+        Exit Sub
+    End If
+
+    If Not ThisWorkbook.Saved Then
+        answer = MsgBox( _
+            "Postoje nesacuvane izmene u ovom Excel fajlu." & vbCrLf & vbCrLf & _
+            "Sacuvaj ih pre azuriranja, pa ponovo pokreni proveru.", _
+            vbExclamation + vbOKOnly, "PCD Excel - azuriranje")
+        Application.StatusBar = False
+        Exit Sub
+    End If
+
+    tempPath = DownloadUpdate(remoteVersion, cacheBust)
+    If Len(tempPath) = 0 Then Err.Raise vbObjectError + 1003, , "Preuzimanje nove verzije nije uspelo."
+
+    Application.StatusBar = "PCD Excel: proveravam integritet nove verzije..."
+    localSha256 = LCase$(FileSha256(tempPath))
+
+    If localSha256 <> remoteSha256 Then
+        On Error Resume Next
+        Kill tempPath
+        On Error GoTo UpdateError
+        Err.Raise vbObjectError + 1004, , _
+            "SHA-256 kontrola nije prosla." & vbCrLf & _
+            "Ocekivani: " & remoteSha256 & vbCrLf & _
+            "Dobijeni: " & localSha256
+    End If
+
+    If LCase$(Right$(ThisWorkbook.Name, 5)) <> ".xlsm" Then
+        Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
+    End If
 
     ScheduleReplacement tempPath, ThisWorkbook.FullName, CurrentExcelProcessId
     Application.StatusBar = False
+
     MsgBox "Nova verzija je preuzeta i proverena." & vbCrLf & vbCrLf & _
            "Excel ce sada zatvoriti staru verziju, zameniti je novom i ponovo je otvoriti.", _
            vbInformation, "PCD Excel - azuriranje"
@@ -210,8 +270,6 @@ Private Function LastNumberAfterDash(ByVal value As String) As Long
         End If
     Next i
 End Function
-
-Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hwnd As LongPtr, ByRef lpdwProcessId As Long) As Long
 
 Private Function CurrentExcelProcessId() As Long
     Dim processId As Long
