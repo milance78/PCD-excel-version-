@@ -93,7 +93,7 @@ Public Sub CheckForUpdate()
         Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
 
-    ReplaceThroughExcelCom tempPath, ThisWorkbook.FullName
+    ScheduleReplacement tempPath, ThisWorkbook.FullName, CurrentExcelProcessId
     Application.StatusBar = False
 
     Application.DisplayAlerts = False
