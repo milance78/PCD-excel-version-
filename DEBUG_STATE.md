@@ -47,3 +47,16 @@ Next: verify CI/publication, then test DEV-47. If manifest HTTP passes, the diag
 DEV-47 produced the same `The parameter is incorrect` dialog. Therefore the cache-buster locale hypothesis was not sufficient to resolve the problem.
 
 The next diagnostic target remains the manifest HTTP call. The existing checkpoint stops at BEFORE MANIFEST HTTP, so the failure is inside HttpGetText. Instrument the individual HTTP operations (CreateObject, Open, each request header, Send) and log the exact URL before changing behavior. Do not change the updater architecture.
+
+
+## Checkpoint 2026-10-04 — debugger correction / DEV-49
+
+The DEV-48 screenshot still showed the generic error. Previous checkpoint logging was insufficient because the global UpdateError handler did not record Err.Number, Err.Source, or the exact execution stage.
+
+Correction: DEV-49 adds a stage variable to CheckForUpdate and logs the exact stage plus Err.Number, Err.Source, and Err.Description in the error handler. This is diagnostic only; no updater architecture or HTTP behavior was changed.
+
+Commits:
+- 1c2d556504cd8286c0f04d04a2f505d4a8d3b063 — exact error-stage logging
+- 832171660e148506d6892c6ec9ae4d83408b0686 — bump DEV build to 49
+
+Next: test DEV-49 once published and inspect the resulting checkfor log. The goal is to obtain the exact VBA error number/source/stage, not another generic screenshot.
