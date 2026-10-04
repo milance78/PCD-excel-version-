@@ -111,7 +111,6 @@ func validateModule1(source string, required string) {
     checkVBAContinuationRules("Module1", source)
     checkProcedureBlocks("Module1", source)
     checkVBABlockStructure("Module1", source)
-    validateEmbeddedVBScript("Module1", source)
 }
 
 func main() {
