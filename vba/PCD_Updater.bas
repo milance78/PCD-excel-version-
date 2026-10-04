@@ -8,6 +8,7 @@ Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hwnd As LongPtr, ByRef lpdwProcessId As Long) As Long
 
 Public Sub CheckForUpdate()
+    Dim stage As String
     Dim diagPath As String
     Dim diagFso As Object
     Dim diagTs As Object
@@ -23,6 +24,7 @@ Public Sub CheckForUpdate()
         diagTs.Close
     End If
     On Error GoTo UpdateError
+    stage = "INIT"
 
     Dim currentVersion As String
     Dim remoteVersion As String
@@ -35,14 +37,18 @@ Public Sub CheckForUpdate()
 
     LogCheckPoint "AFTER START"
 
+    stage = "READ LOCAL VERSION"
     currentVersion = Trim$(CStr(ThisWorkbook.Worksheets("Intervention en cours").Range("H2").Value))
     If Len(currentVersion) = 0 Then currentVersion = "0.0.0"
 
     Application.StatusBar = "PCD Excel: proveravam novu verziju..."
+    stage = "CREATE CACHE BUSTER"
     cacheBust = CStr(CLng(Timer * 1000))
 
+    stage = "BEFORE MANIFEST HTTP"
     LogCheckPoint "BEFORE MANIFEST HTTP"
     manifestText = Base64Decode(JsonValue(HttpGetText(VERSION_URL & "&t=" & cacheBust), "content"))
+    stage = "AFTER MANIFEST HTTP"
     LogCheckPoint "AFTER MANIFEST HTTP"
     remoteVersion = JsonValue(manifestText, "version")
     remoteSha256 = LCase$(JsonValue(manifestText, "sha256"))
@@ -50,6 +56,7 @@ Public Sub CheckForUpdate()
     If Len(remoteVersion) = 0 Then Err.Raise vbObjectError + 1001, , "GitHub nije vratio broj verzije."
     If Len(remoteSha256) <> 64 Then Err.Raise vbObjectError + 1002, , "GitHub nije vratio ispravan SHA-256."
 
+    stage = "BEFORE VERSION COMPARE"
     LogCheckPoint "BEFORE VERSION COMPARE"
     If CompareVersions(remoteVersion, currentVersion) <= 0 Then
         LogCheckPoint "VERSION IS CURRENT"
@@ -80,14 +87,18 @@ Public Sub CheckForUpdate()
         Exit Sub
     End If
 
+    stage = "BEFORE DOWNLOAD"
     LogCheckPoint "BEFORE DOWNLOAD"
     tempPath = DownloadUpdate(remoteVersion, cacheBust)
+    stage = "AFTER DOWNLOAD"
     LogCheckPoint "AFTER DOWNLOAD"
     If Len(tempPath) = 0 Then Err.Raise vbObjectError + 1003, , "Preuzimanje nove verzije nije uspelo."
 
     Application.StatusBar = "PCD Excel: proveravam integritet nove verzije..."
+    stage = "BEFORE SHA256"
     LogCheckPoint "BEFORE SHA256"
     localSha256 = LCase$(FileSha256(tempPath))
+    stage = "AFTER SHA256"
     LogCheckPoint "AFTER SHA256"
 
     If localSha256 <> remoteSha256 Then
@@ -104,8 +115,10 @@ Public Sub CheckForUpdate()
         Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
 
+    stage = "BEFORE SCHEDULE REPLACEMENT"
     LogCheckPoint "BEFORE SCHEDULE REPLACEMENT"
     ScheduleReplacement tempPath, ThisWorkbook.FullName, CurrentExcelProcessId
+    stage = "AFTER SCHEDULE REPLACEMENT"
     LogCheckPoint "AFTER SCHEDULE REPLACEMENT"
     Application.StatusBar = False
 
@@ -119,6 +132,7 @@ Public Sub CheckForUpdate()
     Exit Sub
 
 UpdateError:
+    LogCheckPoint "ERROR STAGE=" & stage & " NUMBER=" & CStr(Err.Number) & " SOURCE=" & Err.Source & " DESCRIPTION=" & Err.Description
     Application.StatusBar = False
     MsgBox "Azuriranje nije izvrseno." & vbCrLf & vbCrLf & _
            Err.Description & vbCrLf & vbCrLf & _
