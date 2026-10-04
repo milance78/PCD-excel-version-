@@ -128,3 +128,16 @@ After every meaningful change:
 ## User constraint
 
 The user is exhausted by repeated trial-and-error. The objective is to finish the updater, not generate endless DEV versions. Prefer evidence from CI, source comparison, logs, and deterministic inspection over asking the user to repeatedly test speculative builds.
+
+## Checkpoint 2026-10-04 — DEV-45 publication verified
+
+- `VERSION.json` on `main` now reports `0.1.0-dev-45`.
+- Published artifact SHA-256 in `VERSION.json`: `a0c168d4d706b32234c34ec8a11feaca7f6abfb040105f3a271ffd8ee854a037`.
+- `build/build_xlsm.py` on `main` is `VERSION = "0.1.0-dev-45"`.
+- Current `vba/PCD_Updater.bas` on `main` has blob SHA `d7c3facfd39f6b9ae8101c54ca440c3ad074db6e` and uses the GitHub API manifest plus the restored updater structure.
+- Workflow definition currently validates `ScheduleReplacement` before building the XLSM.
+- The GitHub commit-workflow-runs lookup for the DEV-45 version commit returned no run record, so the workflow completion itself has not been independently verified through that endpoint. However, the published `VERSION.json` has advanced to DEV-45, which confirms that the publish step occurred.
+
+### Decision
+
+DEV-45 is published and source state is consistent with the intended reset. Do not make another code change yet. The next useful action is a single controlled test of DEV-45, with the result recorded here immediately. If it fails, capture the exact new evidence before changing architecture.
