@@ -40,3 +40,10 @@ Commits:
 - e2578a1c0db2437fbc61e85c3272db5595221c80 — bump DEV build to 47
 
 Next: verify CI/publication, then test DEV-47. If manifest HTTP passes, the diagnostic checkpoints will tell us the next boundary. Do not change any other part of the updater before that result.
+
+
+## Checkpoint 2026-10-04 — DEV-47 still fails
+
+DEV-47 produced the same `The parameter is incorrect` dialog. Therefore the cache-buster locale hypothesis was not sufficient to resolve the problem.
+
+The next diagnostic target remains the manifest HTTP call. The existing checkpoint stops at BEFORE MANIFEST HTTP, so the failure is inside HttpGetText. Instrument the individual HTTP operations (CreateObject, Open, each request header, Send) and log the exact URL before changing behavior. Do not change the updater architecture.
