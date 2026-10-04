@@ -118,3 +118,33 @@ Commits:
 - eaea91d3c30694facdea5cbaf6b2e5b9c432e25b — bump DEV build to 51
 
 No user test should be requested until CI completes and VERSION.json proves that DEV-51 was actually published.
+
+
+## Checkpoint 2026-10-04 — DEV-51 decisive network result and DEV-52 targeted correction
+
+DEV-51 log is decisive. The failure is no longer an MSXML response/parsing issue and is not a generic HTTP failure:
+
+- WinHTTP object creation succeeds.
+- `Open` succeeds.
+- both request headers succeed.
+- failure occurs at `Send`.
+- Error: `-2147012889`, source `WinHttp.WinHttpRequest`, description `The server name or address could not be resolved`.
+- The failing URL is `raw.githubusercontent.com/.../VERSION.json`.
+
+Therefore the machine/network cannot resolve `raw.githubusercontent.com`. This explains why replacing MSXML with WinHTTP did not help: the transport itself is now failing DNS resolution on the raw GitHub host. The DEV-49 result against `api.github.com` was different: Send completed there and the error occurred afterward inside MSXML.
+
+This gives a concrete, evidence-backed route: return the manifest request to the previously reachable `api.github.com` endpoint, keep WinHTTP as transport, and remove the MSXML dependency from Base64 decoding by implementing the small Base64 decoder directly in VBA.
+
+DEV-52 changes only that manifest path:
+- API host: `api.github.com` (previously proven to reach SEND on this machine);
+- WinHTTP remains the HTTP transport;
+- GitHub API Base64 content is decoded by pure VBA;
+- no MSXML object is used for manifest decoding;
+- download, SHA-256, and SharePoint/VBS replacement remain unchanged.
+
+Commits:
+- 9b3178f0537651505d65f4ab5110269e1528f9f7 — use reachable GitHub API with pure VBA Base64 decoding
+- cd9142e16d4e816bf63cba51cd98cc3becef5429 — fix VBA Base64 integer division syntax
+- 2aac494ffba8156d4fe525fa43df36e79c7ef687 — bump DEV build to 52
+
+Important: DEV-52 must not be tested until CI/publication is verified in VERSION.json.
