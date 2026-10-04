@@ -5,6 +5,7 @@ Private Const VERSION_URL As String = "https://api.github.com/repos/milance78/PC
 Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-latest.xlsm"
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
+Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hwnd As LongPtr, ByRef lpdwProcessId As Long) As Long
 
 Public Sub CheckForUpdate()
     Dim diagPath As String
@@ -96,13 +97,13 @@ Public Sub CheckForUpdate()
     ScheduleReplacement tempPath, ThisWorkbook.FullName, CurrentExcelProcessId
     Application.StatusBar = False
 
+    MsgBox "Nova verzija je preuzeta i proverena." & vbCrLf & vbCrLf & _
+           "Excel ce sada zatvoriti staru verziju, zameniti je novom i ponovo je otvoriti.", _
+           vbInformation, "PCD Excel - azuriranje"
+
     Application.DisplayAlerts = False
-    On Error Resume Next
     ThisWorkbook.Saved = True
-    Err.Clear
     Application.Quit
-    Err.Clear
-    On Error GoTo 0
     Exit Sub
 
 UpdateError:
@@ -309,7 +310,6 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     Dim fso As Object
     Dim ts As Object
     Dim shell As Object
-    Dim commandLine As String
 
     scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
     logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
@@ -371,14 +371,8 @@ Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String
     ts.Close
 
     Set shell = CreateObject("WScript.Shell")
-    commandLine = QuoteArg(Environ$("WINDIR") & "\System32\wscript.exe") & " " & _
-                  QuoteArg(scriptPath) & " " & QuoteArg(newFile) & " " & _
-                  QuoteArg(oldFile) & " " & QuoteArg(CStr(processId)) & " " & QuoteArg(logPath)
-
-    LogUpdaterLaunch "BEFORE WSH.RUN", Environ$("WINDIR") & "\System32\wscript.exe", commandLine
-    shell.Run commandLine, 0, False
-    LogUpdaterLaunch "AFTER WSH.RUN", Environ$("WINDIR") & "\System32\wscript.exe", commandLine
-
+    shell.Run "wscript.exe " & QuoteArg(scriptPath) & " " & QuoteArg(newFile) & " " & _
+              QuoteArg(oldFile) & " " & QuoteArg(CStr(processId)) & " " & QuoteArg(logPath), 0, False
     Exit Sub
 
 CreateError:
@@ -392,19 +386,3 @@ End Sub
 Private Function QuoteArg(ByVal value As String) As String
     QuoteArg = Chr(34) & Replace(value, Chr(34), Chr(34) & Chr(34)) & Chr(34)
 End Function
-
-
-Private Sub LogUpdaterLaunch(ByVal stage As String, ByVal wscriptPath As String, ByVal launchParams As String)
-    Dim fso As Object
-    Dim ts As Object
-    Dim p As String
-
-    On Error Resume Next
-    p = Environ$("TEMP") & "\PCD-Excel-launch.log"
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    Set ts = fso.OpenTextFile(p, 8, True)
-    ts.WriteLine Now & " | " & stage
-    ts.WriteLine "WSCRIPT=" & wscriptPath
-    ts.WriteLine "PARAMS=" & launchParams
-    ts.Close
-End Sub
