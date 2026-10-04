@@ -18,3 +18,12 @@ Commits:
 - 02a3efde53946877f5b79477f31984147c9ba168 — bump DEV build to 46
 
 Next: wait for CI/publication, then use DEV-46 to identify the exact failing boundary. Do not make another architectural change before that evidence exists.
+
+
+## Checkpoint 2026-10-04 — DEV-46 test result
+
+User reports that DEV-46 still displays the same error dialog: Azuriranje nije izvrseno / The parameter is incorrect.
+
+The screenshot does not identify the failing checkpoint. The next required evidence is the new PCD-Excel-checkforupdate.log from this DEV-46 run. PCD-Excel-updater.log is also useful to confirm whether ScheduleReplacement launched the detached script.
+
+No architecture change should be made until those logs are inspected.
