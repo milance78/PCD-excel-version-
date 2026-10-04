@@ -91,3 +91,30 @@ From this point forward:
 - `DEBUG_STATE.md` must be updated at every meaningful step, including the reason for the next change and the evidence supporting it.
 
 The goal is to stop the repeated trial-and-error cycle and reach a single evidence-backed fix.
+
+
+## Checkpoint 2026-10-04 — Concrete source finding after DEV-50
+
+Before making any further test request, the current DEV-50 source was compared directly with the known DEV-37 source and with the exact DEV-49 failure evidence.
+
+A concrete remaining MSXML dependency was found in the manifest path. DEV-50 changed the HTTP transport to WinHTTP, but `CheckForUpdate` still did this:
+
+`Base64Decode(JsonValue(HttpGetText(...), "content"))`
+
+and `Base64Decode` still instantiated `MSXML2.DOMDocument.6.0` and decoded the GitHub API's base64 `content` field.
+
+That matters because DEV-49's decisive error source was `msxml6.dll` with `-2147024809 / The parameter is incorrect` after HTTP SEND. The DEV-50 change removed MSXML from the HTTP transport, but did not remove MSXML from the immediately following manifest-processing path. Therefore a repeated generic error from DEV-50 would not, by itself, prove that WinHTTP failed.
+
+The manifest is a small plain JSON file and the repository already exposes it through the raw GitHub URL. The targeted correction is therefore:
+- use the raw VERSION.json URL directly;
+- remove the API/base64 decoding layer;
+- keep WinHTTP as the transport;
+- leave download, SHA-256, and SharePoint/VBS replacement unchanged.
+
+This is not a new updater architecture. It removes the specific remaining MSXML dependency implicated by the observed error.
+
+Commits:
+- b7986a3091a9406eb857f91df51d258c17f5f4b3 — remove remaining MSXML dependency from manifest parsing
+- eaea91d3c30694facdea5cbaf6b2e5b9c432e25b — bump DEV build to 51
+
+No user test should be requested until CI completes and VERSION.json proves that DEV-51 was actually published.
