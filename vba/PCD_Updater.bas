@@ -5,8 +5,6 @@ Private Const VERSION_URL As String = "https://api.github.com/repos/milance78/PC
 Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-latest.xlsm"
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
-Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hwnd As LongPtr, ByRef lpdwProcessId As Long) As Long
-Private Declare PtrSafe Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As LongPtr
 
 Public Sub CheckForUpdate()
     Dim diagPath As String
@@ -95,7 +93,7 @@ Public Sub CheckForUpdate()
         Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
 
-    ScheduleReplacement tempPath, ThisWorkbook.FullName, CurrentExcelProcessId
+    ReplaceThroughExcelCom tempPath, ThisWorkbook.FullName
     Application.StatusBar = False
 
     Application.DisplayAlerts = False
@@ -298,97 +296,45 @@ Private Function LastNumberAfterDash(ByVal value As String) As Long
     Next i
 End Function
 
-Private Function CurrentExcelProcessId() As Long
-    Dim processId As Long
-    GetWindowThreadProcessId Application.Hwnd, processId
-    CurrentExcelProcessId = processId
-End Function
+Private Sub ReplaceThroughExcelCom(ByVal newFile As String, ByVal oldFile As String)
+    Dim xl As Object
+    Dim wb As Object
 
-Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String, ByVal processId As Long)
-    Dim scriptPath As String
-    Dim logPath As String
-    Dim scriptText As String
-    Dim fso As Object
-    Dim ts As Object
-    Dim shellResult As LongPtr
-    Dim wscriptPath As String
-    Dim launchParams As String
+    On Error GoTo ReplaceError
 
-    scriptPath = Environ$("TEMP") & "\PCD-Excel-updater.vbs"
-    logPath = Environ$("TEMP") & "\PCD-Excel-updater.log"
+    Application.StatusBar = "PCD Excel: upisujem novu verziju na SharePoint..."
 
-    On Error GoTo CreateError
-    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set xl = CreateObject("Excel.Application")
+    If xl Is Nothing Then Err.Raise vbObjectError + 1020, , "Nije moguce pokrenuti pomocni Excel."
 
-    On Error Resume Next
-    If fso.FileExists(logPath) Then fso.DeleteFile logPath, True
-    If fso.FileExists(scriptPath) Then fso.DeleteFile scriptPath, True
-    On Error GoTo CreateError
+    xl.Visible = False
+    xl.DisplayAlerts = False
+    xl.AskToUpdateLinks = False
 
-    scriptText = "Option Explicit" & vbCrLf
-    AppendVbsLine scriptText, "Dim fso, shell, xl, wb, logPath"
-    AppendVbsLine scriptText, "Set fso = CreateObject(""Scripting.FileSystemObject"")"
-    AppendVbsLine scriptText, "Set shell = CreateObject(""WScript.Shell"")"
-    AppendVbsLine scriptText, "logPath = WScript.Arguments(3)"
-    AppendVbsLine scriptText, "LogLine ""START"""
-    AppendVbsLine scriptText, "LogLine ""NEW="" & WScript.Arguments(0)"
-    AppendVbsLine scriptText, "LogLine ""OLD="" & WScript.Arguments(1)"
-    AppendVbsLine scriptText, "WScript.Sleep 5000"
-    AppendVbsLine scriptText, "LogLine ""STARTING EXCEL COM"""
-    AppendVbsLine scriptText, "On Error Resume Next"
-    AppendVbsLine scriptText, "Set xl = CreateObject(""Excel.Application"")"
-    AppendVbsLine scriptText, "If Err.Number <> 0 Then LogLine ""EXCEL CREATE ERROR "" & Err.Number & "" "" & Err.Description: WScript.Quit 10"
-    AppendVbsLine scriptText, "Err.Clear"
-    AppendVbsLine scriptText, "xl.Visible = False"
-    AppendVbsLine scriptText, "xl.DisplayAlerts = False"
-    AppendVbsLine scriptText, "xl.AskToUpdateLinks = False"
-    AppendVbsLine scriptText, "LogLine ""OPENING NEW XLSM"""
-    AppendVbsLine scriptText, "Set wb = xl.Workbooks.Open(WScript.Arguments(0), 0, False)"
-    AppendVbsLine scriptText, "If Err.Number <> 0 Then LogLine ""OPEN ERROR "" & Err.Number & "" "" & Err.Description: xl.Quit: WScript.Quit 11"
-    AppendVbsLine scriptText, "Err.Clear"
-    AppendVbsLine scriptText, "LogLine ""SAVING TO SHAREPOINT URL"""
-    AppendVbsLine scriptText, "wb.SaveAs WScript.Arguments(1), 52, , , False, False, 1, 2, False"
-    AppendVbsLine scriptText, "If Err.Number <> 0 Then LogLine ""SAVEAS ERROR "" & Err.Number & "" "" & Err.Description: wb.Close False: xl.Quit: WScript.Quit 12"
-    AppendVbsLine scriptText, "Err.Clear"
-    AppendVbsLine scriptText, "LogLine ""SAVEAS OK"""
-    AppendVbsLine scriptText, "wb.Close False"
-    AppendVbsLine scriptText, "Set wb = Nothing"
-    AppendVbsLine scriptText, "LogLine ""OPENING SHAREPOINT COPY"""
-    AppendVbsLine scriptText, "Set wb = xl.Workbooks.Open(WScript.Arguments(1), 0, False)"
-    AppendVbsLine scriptText, "If Err.Number <> 0 Then LogLine ""REOPEN ERROR "" & Err.Number & "" "" & Err.Description: xl.Quit: WScript.Quit 13"
-    AppendVbsLine scriptText, "Err.Clear"
-    AppendVbsLine scriptText, "xl.Visible = True"
-    AppendVbsLine scriptText, "LogLine ""REOPEN OK"""
-    AppendVbsLine scriptText, "LogLine ""END"""
-    AppendVbsLine scriptText, "WScript.Quit 0"
-    AppendVbsLine scriptText, "Sub LogLine(ByVal value)"
-    AppendVbsLine scriptText, "On Error Resume Next"
-    AppendVbsLine scriptText, "Dim t"
-    AppendVbsLine scriptText, "Set t = fso.OpenTextFile(logPath, 8, True)"
-    AppendVbsLine scriptText, "t.WriteLine Now & "" | "" & value"
-    AppendVbsLine scriptText, "t.Close"
-    AppendVbsLine scriptText, "End Sub"
+    Set wb = xl.Workbooks.Open(newFile, 0, False)
+    If wb Is Nothing Then Err.Raise vbObjectError + 1021, , "Nova XLSM verzija nije mogla da se otvori."
 
-    Set ts = fso.CreateTextFile(scriptPath, True, False)
-    ts.Write scriptText
-    ts.Close
+    wb.SaveAs oldFile, 52, , , False, False, 1, 2, False
+    wb.Close False
+    Set wb = Nothing
 
-    wscriptPath = Environ$("WINDIR") & "\System32\wscript.exe"
-    launchParams = QuoteArg(scriptPath) & " " & QuoteArg(newFile) & " " & _
-                   QuoteArg(oldFile) & " " & QuoteArg(CStr(processId)) & " " & QuoteArg(logPath)
+    Set wb = xl.Workbooks.Open(oldFile, 0, False)
+    If wb Is Nothing Then Err.Raise vbObjectError + 1022, , "SharePoint kopija nije mogla da se ponovo otvori."
 
-    LogUpdaterLaunch "BEFORE SHELLEXECUTE", wscriptPath, launchParams
-    shellResult = ShellExecute(0, "open", wscriptPath, launchParams, vbNullString, 0)
-    LogUpdaterLaunch "AFTER SHELLEXECUTE=" & CStr(shellResult), wscriptPath, launchParams
-    If shellResult <= 32 Then
-        Err.Raise vbObjectError + 1022, , _
-            "Windows nije mogao da pokrene updater. ShellExecute=" & CStr(shellResult)
-    End If
-
+    xl.Visible = True
+    Set wb = Nothing
+    Set xl = Nothing
     Exit Sub
 
-CreateError:
-    Err.Raise vbObjectError + 1021, , "Updater nije uspeo da pripremi SharePoint updater." & vbCrLf & Err.Description
+ReplaceError:
+    On Error Resume Next
+    If Not wb Is Nothing Then wb.Close False
+    If Not xl Is Nothing Then xl.Quit
+    Set wb = Nothing
+    Set xl = Nothing
+    On Error GoTo 0
+    Err.Raise vbObjectError + 1023, , _
+        "Direktna zamena preko Excel COM-a nije uspela." & vbCrLf & Err.Description
 End Sub
 
 Private Sub AppendVbsLine(ByRef scriptText As String, ByVal lineText As String)
