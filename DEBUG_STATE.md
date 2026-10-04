@@ -75,3 +75,19 @@ Commits:
 - 620e92a4f1d33d1a3102c60ec975ffaadc13b551 — bump DEV build to 50
 
 Next: verify publication, then test DEV-50. If the manifest succeeds, continue from the existing checkpoints. If it fails, capture the exact new log; do not revert to MSXML without evidence.
+
+
+## Checkpoint 2026-10-04 — Process correction after DEV-50
+
+DEV-50 again produced the same user-visible error: `Azuriranje nije izvrseno / The parameter is incorrect.`
+
+The debugging process itself is now identified as a problem: too many successive builds/approaches were being tested by the user without first proving the exact cause against the repository code and the known behavior. The user explicitly called out that this has happened repeatedly and that changing the approach again is not acceptable.
+
+From this point forward:
+- Do not ask the user to test another DEV build based only on a hypothesis.
+- Do not create a new DEV build merely to add another round of generic diagnostics.
+- Before any further code change, inspect the exact current `main` source, the exact published artifact/version, and the last known working/failing execution evidence together.
+- Any proposed fix must be tied to a specific, evidenced failing statement or a reproducible contradiction in the code.
+- `DEBUG_STATE.md` must be updated at every meaningful step, including the reason for the next change and the evidence supporting it.
+
+The goal is to stop the repeated trial-and-error cycle and reach a single evidence-backed fix.
