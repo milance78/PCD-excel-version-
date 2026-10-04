@@ -1,7 +1,7 @@
 Attribute VB_Name = "PCD_Updater"
 Option Explicit
 
-Private Const VERSION_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/VERSION.json"
+Private Const VERSION_URL As String = "https://api.github.com/repos/milance78/PCD-excel-version-/contents/VERSION.json?ref=main"
 Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-latest.xlsm"
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
@@ -47,7 +47,7 @@ Public Sub CheckForUpdate()
 
     stage = "BEFORE MANIFEST HTTP"
     LogCheckPoint "BEFORE MANIFEST HTTP"
-    manifestText = HttpGetText(VERSION_URL & "?t=" & cacheBust)
+    manifestText = Base64Decode(JsonValue(HttpGetText(VERSION_URL & "&t=" & cacheBust), "content"))
     stage = "AFTER MANIFEST HTTP"
     LogCheckPoint "AFTER MANIFEST HTTP"
     remoteVersion = JsonValue(manifestText, "version")
@@ -251,6 +251,39 @@ Private Function FileSha256(ByVal filePath As String) As String
 
     If matches.Count = 0 Then Err.Raise vbObjectError + 1013, , "Windows nije vratio SHA-256 vrednost."
     FileSha256 = LCase$(matches(0).Value)
+End Function
+
+Private Function Base64Decode(ByVal encoded As String) As String
+    Dim alphabet As String
+    Dim clean As String
+    Dim i As Long
+    Dim value As Long
+    Dim buffer As Long
+    Dim bits As Long
+    Dim ch As String
+    Dim result As String
+
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    clean = Replace(encoded, vbCr, "")
+    clean = Replace(clean, vbLf, "")
+    clean = Replace(clean, "=", "")
+
+    For i = 1 To Len(clean)
+        ch = Mid$(clean, i, 1)
+        value = InStr(1, alphabet, ch, vbBinaryCompare) - 1
+        If value < 0 Then Err.Raise vbObjectError + 1014, , "Neispravan Base64 odgovor sa GitHub-a."
+
+        buffer = buffer * 64 + value
+        bits = bits + 6
+
+        Do While bits >= 8
+            bits = bits - 8
+            result = result & Chr$(CLng((buffer \ (2 ^ bits)) And 255))
+            buffer = buffer And ((2 ^ bits) - 1)
+        Loop
+    Next i
+
+    Base64Decode = result
 End Function
 
 Private Function JsonValue(ByVal json As String, ByVal key As String) As String
