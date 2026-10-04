@@ -157,24 +157,23 @@ Private Function HttpGetText(ByVal url As String) As String
 
     LogCheckPoint "HTTP URL=" & url
     LogCheckPoint "HTTP BEFORE CREATEOBJECT"
-    Set http = CreateObject("MSXML2.XMLHTTP.6.0")
+    Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
     LogCheckPoint "HTTP AFTER CREATEOBJECT"
+
+    http.Option(6) = True
+    http.SetTimeouts 30000, 30000, 30000, 30000
 
     LogCheckPoint "HTTP BEFORE OPEN"
     http.Open "GET", url, False
     LogCheckPoint "HTTP AFTER OPEN"
 
     LogCheckPoint "HTTP BEFORE HEADER CACHE"
-    http.setRequestHeader "Cache-Control", "no-cache"
+    http.SetRequestHeader "Cache-Control", "no-cache"
     LogCheckPoint "HTTP AFTER HEADER CACHE"
 
     LogCheckPoint "HTTP BEFORE HEADER PRAGMA"
-    http.setRequestHeader "Pragma", "no-cache"
+    http.SetRequestHeader "Pragma", "no-cache"
     LogCheckPoint "HTTP AFTER HEADER PRAGMA"
-
-    LogCheckPoint "HTTP BEFORE HEADER IF-MODIFIED"
-    http.setRequestHeader "If-Modified-Since", "Sat, 01 Jan 2000 00:00:00 GMT"
-    LogCheckPoint "HTTP AFTER HEADER IF-MODIFIED"
 
     LogCheckPoint "HTTP BEFORE SEND"
     http.Send
@@ -184,7 +183,7 @@ Private Function HttpGetText(ByVal url As String) As String
         Err.Raise vbObjectError + 1010, , "GitHub HTTP greska: " & http.Status & " " & http.StatusText
     End If
 
-    HttpGetText = CStr(http.responseText)
+    HttpGetText = CStr(http.ResponseText)
 End Function
 
 Private Function DownloadUpdate(ByVal remoteVersion As String, ByVal cacheBust As String) As String
@@ -198,11 +197,12 @@ Private Function DownloadUpdate(ByVal remoteVersion As String, ByVal cacheBust A
     Kill tempPath
     On Error GoTo 0
 
-    Set http = CreateObject("MSXML2.XMLHTTP.6.0")
+    Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
+    http.Option(6) = True
+    http.SetTimeouts 30000, 30000, 30000, 30000
     http.Open "GET", ARTIFACT_URL & "?v=" & Replace(remoteVersion, " ", "%20") & "&pcd=" & cacheBust, False
-    http.setRequestHeader "Cache-Control", "no-cache"
-    http.setRequestHeader "Pragma", "no-cache"
-    http.setRequestHeader "If-Modified-Since", "Sat, 01 Jan 2000 00:00:00 GMT"
+    http.SetRequestHeader "Cache-Control", "no-cache"
+    http.SetRequestHeader "Pragma", "no-cache"
     http.Send
 
     If http.Status < 200 Or http.Status >= 300 Then
