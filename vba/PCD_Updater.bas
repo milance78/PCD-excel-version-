@@ -33,20 +33,26 @@ Public Sub CheckForUpdate()
     Dim localSha256 As String
     Dim cacheBust As String
 
+    LogCheckPoint "AFTER START"
+
     currentVersion = Trim$(CStr(ThisWorkbook.Worksheets("Intervention en cours").Range("H2").Value))
     If Len(currentVersion) = 0 Then currentVersion = "0.0.0"
 
     Application.StatusBar = "PCD Excel: proveravam novu verziju..."
     cacheBust = CStr(Timer)
 
+    LogCheckPoint "BEFORE MANIFEST HTTP"
     manifestText = Base64Decode(JsonValue(HttpGetText(VERSION_URL & "&t=" & cacheBust), "content"))
+    LogCheckPoint "AFTER MANIFEST HTTP"
     remoteVersion = JsonValue(manifestText, "version")
     remoteSha256 = LCase$(JsonValue(manifestText, "sha256"))
 
     If Len(remoteVersion) = 0 Then Err.Raise vbObjectError + 1001, , "GitHub nije vratio broj verzije."
     If Len(remoteSha256) <> 64 Then Err.Raise vbObjectError + 1002, , "GitHub nije vratio ispravan SHA-256."
 
+    LogCheckPoint "BEFORE VERSION COMPARE"
     If CompareVersions(remoteVersion, currentVersion) <= 0 Then
+        LogCheckPoint "VERSION IS CURRENT"
         Application.StatusBar = False
         MsgBox "Koristis najnoviju dostupnu verziju: " & currentVersion, _
                vbInformation, "PCD Excel"
@@ -74,11 +80,15 @@ Public Sub CheckForUpdate()
         Exit Sub
     End If
 
+    LogCheckPoint "BEFORE DOWNLOAD"
     tempPath = DownloadUpdate(remoteVersion, cacheBust)
+    LogCheckPoint "AFTER DOWNLOAD"
     If Len(tempPath) = 0 Then Err.Raise vbObjectError + 1003, , "Preuzimanje nove verzije nije uspelo."
 
     Application.StatusBar = "PCD Excel: proveravam integritet nove verzije..."
+    LogCheckPoint "BEFORE SHA256"
     localSha256 = LCase$(FileSha256(tempPath))
+    LogCheckPoint "AFTER SHA256"
 
     If localSha256 <> remoteSha256 Then
         On Error Resume Next
@@ -94,7 +104,9 @@ Public Sub CheckForUpdate()
         Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
 
+    LogCheckPoint "BEFORE SCHEDULE REPLACEMENT"
     ScheduleReplacement tempPath, ThisWorkbook.FullName, CurrentExcelProcessId
+    LogCheckPoint "AFTER SCHEDULE REPLACEMENT"
     Application.StatusBar = False
 
     MsgBox "Nova verzija je preuzeta i proverena." & vbCrLf & vbCrLf & _
@@ -112,6 +124,18 @@ UpdateError:
            Err.Description & vbCrLf & vbCrLf & _
            "Mozes nastaviti da koristis ovu verziju. Ako je korporativna mreza blokirala GitHub, koristi rucno preuzimanje najnovijeg XLSM fajla.", _
            vbExclamation, "PCD Excel - azuriranje"
+End Sub
+
+Private Sub LogCheckPoint(ByVal value As String)
+    Dim fso As Object
+    Dim ts As Object
+    Dim p As String
+    On Error Resume Next
+    p = Environ$("TEMP") & "\PCD-Excel-checkforupdate.log"
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set ts = fso.OpenTextFile(p, 8, True)
+    ts.WriteLine Now & " | " & value
+    ts.Close
 End Sub
 
 Private Function HttpGetText(ByVal url As String) As String
