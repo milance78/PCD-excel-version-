@@ -140,12 +140,31 @@ End Sub
 
 Private Function HttpGetText(ByVal url As String) As String
     Dim http As Object
+
+    LogCheckPoint "HTTP URL=" & url
+    LogCheckPoint "HTTP BEFORE CREATEOBJECT"
     Set http = CreateObject("MSXML2.XMLHTTP.6.0")
+    LogCheckPoint "HTTP AFTER CREATEOBJECT"
+
+    LogCheckPoint "HTTP BEFORE OPEN"
     http.Open "GET", url, False
+    LogCheckPoint "HTTP AFTER OPEN"
+
+    LogCheckPoint "HTTP BEFORE HEADER CACHE"
     http.setRequestHeader "Cache-Control", "no-cache"
+    LogCheckPoint "HTTP AFTER HEADER CACHE"
+
+    LogCheckPoint "HTTP BEFORE HEADER PRAGMA"
     http.setRequestHeader "Pragma", "no-cache"
+    LogCheckPoint "HTTP AFTER HEADER PRAGMA"
+
+    LogCheckPoint "HTTP BEFORE HEADER IF-MODIFIED"
     http.setRequestHeader "If-Modified-Since", "Sat, 01 Jan 2000 00:00:00 GMT"
+    LogCheckPoint "HTTP AFTER HEADER IF-MODIFIED"
+
+    LogCheckPoint "HTTP BEFORE SEND"
     http.Send
+    LogCheckPoint "HTTP AFTER SEND"
 
     If http.Status < 200 Or http.Status >= 300 Then
         Err.Raise vbObjectError + 1010, , "GitHub HTTP greska: " & http.Status & " " & http.StatusText
