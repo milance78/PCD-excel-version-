@@ -60,3 +60,18 @@ Commits:
 - 832171660e148506d6892c6ec9ae4d83408b0686 — bump DEV build to 49
 
 Next: test DEV-49 once published and inspect the resulting checkfor log. The goal is to obtain the exact VBA error number/source/stage, not another generic screenshot.
+
+
+## Checkpoint 2026-10-04 — exact MSXML failure identified; DEV-50 transport change
+
+DEV-49 log finally gave the decisive evidence: the request reaches HTTP SEND successfully (`HTTP AFTER SEND`), then the global error handler reports `NUMBER=-2147024809`, `SOURCE=msxml6.dll`, `DESCRIPTION=The parameter is incorrect.` The failing stage is still labeled BEFORE MANIFEST HTTP because the stage variable surrounds the function call, but the inner checkpoints prove the failure is after Send and before HttpGetText returns.
+
+This rules out URL construction, XMLHTTP Open, request headers, and the Send call itself. The failure is in the MSXML6 response/status handling on this machine. MSXML 0x80070057 is a documented/known class of MSXML HTTP failure.
+
+DEV-50 changes only the HTTP transport from MSXML2.XMLHTTP.6.0 to WinHttp.WinHttpRequest.5.1 for both manifest and XLSM download. Redirects and 30-second timeouts are enabled. No SharePoint/VBS updater architecture was changed.
+
+Commits:
+- bf088d5d7a192c01818b28f380dcb0dc53e21923 — replace MSXML HTTP with WinHTTP
+- 620e92a4f1d33d1a3102c60ec975ffaadc13b551 — bump DEV build to 50
+
+Next: verify publication, then test DEV-50. If the manifest succeeds, continue from the existing checkpoints. If it fails, capture the exact new log; do not revert to MSXML without evidence.
