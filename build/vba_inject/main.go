@@ -188,7 +188,7 @@ func main() {
                 ) ||
                 !strings.Contains(
                     m.Source,
-                    "Private Sub ScheduleReplacement(ByVal newFile As String, ByVal oldFile As String, ByVal processId As Long)",
+                    "Private Sub ReplaceThroughExcelCom(ByVal newFile As String, ByVal oldFile As String)",
                 ) ||
                 !strings.Contains(
                     m.Source,
