@@ -39,7 +39,7 @@ Public Sub CheckForUpdate()
     If Len(currentVersion) = 0 Then currentVersion = "0.0.0"
 
     Application.StatusBar = "PCD Excel: proveravam novu verziju..."
-    cacheBust = CStr(Timer)
+    cacheBust = CStr(CLng(Timer * 1000))
 
     LogCheckPoint "BEFORE MANIFEST HTTP"
     manifestText = Base64Decode(JsonValue(HttpGetText(VERSION_URL & "&t=" & cacheBust), "content"))
