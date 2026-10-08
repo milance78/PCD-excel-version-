@@ -218,3 +218,67 @@ Next controlled test:
 The purpose of DEV-56 is only to create a newer target and test the complete DEV-55 -> DEV-56 replacement flow. No further updater architecture changes should be made unless that test produces new runtime evidence.
 
 Important: the user explicitly requested that this complete history be recorded in DEBUG_STATE.md so the process is not repeated or lost.
+
+## Detailed investigation history — updater failure chain (2026-10-08)
+
+This section records the actual technical investigation, not just build numbers. It preserves what was tested, what evidence was obtained, what was disproved, and why each architecture change was made.
+
+### 1. Windows file operations vs SharePoint
+The original updater tried Windows file-system operations (MOVE/delete/staging/VBS/CMD/PID handling) against the currently open workbook. The old DEV-30 log showed DELETE OK followed by repeated MOVE ERROR 52, Bad file name or number, while OLD was an HTTPS SharePoint URL.
+Conclusion: ThisWorkbook.FullName is a SharePoint URL, not a local Windows path. Windows MOVE cannot replace it as a local file. This was a confirmed architectural incompatibility.
+
+### 2. Excel COM / SaveAs
+The replacement path was changed to Excel COM and SaveAs against the SharePoint URL. DEV-31 compiled successfully in Excel. Version comparison was then tested with controlled DEV-32/DEV-33 changes.
+DEV-33 diagnostics showed local version DEV-33, remote version DEV-33, local build 33 and remote build 33. This proved manifest retrieval/parsing and version comparison worked in that test.
+
+### 3. Standalone VBScript error
+After a successful version-detection test, the replacement VBS failed with Invalid 'exit' statement. The generated standalone VBScript contained a top-level Exit Sub, which is invalid in VBScript. It was changed to WScript.Quit 0 and DEV-35 was built.
+
+### 4. Successful replacement evidence
+A later updater log recorded a complete successful sequence: START, NEW temporary XLSM, OLD SharePoint URL, STARTING EXCEL COM, OPENING NEW XLSM, SAVING TO SHAREPOINT URL, SAVEAS OK, OPENING SHAREPOINT COPY, REOPEN OK, END.
+This proved that the VBS + Excel COM replacement mechanism can work. It did not prove that the currently failing workbook was launching the same VBS instance/path.
+
+### 5. Launcher investigation
+The failing message remained The parameter is incorrect while the updater log timestamp stayed stale. That stale timestamp was important: ScheduleReplacement recreates the log before launching the replacement process, while the VBS writes START only after it has launched. Therefore the current failing click was not reaching the expected VBS execution path.
+The actual embedded VBA was exported as Module1 (12345.txt). It proved the workbook still contained the older DEV-37 updater and exposed the exact ScheduleReplacement and generated-VBS code.
+Controlled experiments changed WScript.Shell.Run to ShellExecuteA, added launch checkpoints, attempted direct Excel COM replacement in DEV-42, then restored the VBS architecture. A temporary caller mismatch in DEV-43 (ReplaceThroughExcelCom no longer existing) caused a compile error and was corrected to ScheduleReplacement. DEV-44 still produced The parameter is incorrect.
+These experiments did not establish a new root cause. They showed that changing the launcher or temporarily switching to direct COM did not resolve the corporate-environment failure.
+
+### 6. DEV-45/46/47 — failure moved to manifest retrieval
+DEV-45 was reset to the known DEV-37 updater logic and used as a clean test artifact. Its check-for-update log showed CHECKFORUPDATE START, the SharePoint workbook URL, and version DEV-45, while the replacement log remained stale.
+DEV-46 added checkpoints and stopped at BEFORE MANIFEST HTTP. DEV-47 changed cache busting from CStr(Timer) to a millisecond value. The failure persisted, ruling out cache-busting syntax as the root cause.
+
+### 7. DEV-48/49 — exact MSXML failure isolated
+DEV-48 instrumented HttpGetText around CreateObject, Open, cache headers, pragma, If-Modified-Since and Send. DEV-49 added stage/error logging.
+The decisive DEV-49 log showed: WinHTTP object creation succeeded; Open succeeded; all headers succeeded; Send succeeded; then the error was NUMBER=-2147024809, SOURCE=msxml6.dll, DESCRIPTION=The parameter is incorrect.
+This proved the failure was after Send, in the response-handling path involving the MSXML-based implementation. This was the first exact isolation of the original parameter-error location.
+
+### 8. DEV-50/51 — corporate DNS evidence
+DEV-50 changed the HTTP transport from MSXML2.XMLHTTP.6.0 to WinHttp.WinHttpRequest.5.1. The user-facing failure remained.
+DEV-51 then attempted direct VERSION.json access through raw.githubusercontent.com. The log showed CreateObject/Open/headers succeeding, but Send failed with NUMBER=-2147012889, SOURCE=WinHttp.WinHttpRequest, DESCRIPTION=The server name or address could not be resolved.
+Conclusion: the corporate workstation could not resolve raw.githubusercontent.com. DEV-51 therefore could not self-update from that host.
+
+### 9. DEV-52/53/54 — GitHub path exhausted
+DEV-52 restored api.github.com for the manifest and replaced the MSXML Base64 decoder with pure VBA Base64 decoding. This directly addressed the DEV-49 MSXML evidence.
+DEV-53 moved the artifact download from raw.githubusercontent.com to the GitHub Contents API and added the raw media Accept header. A query-string construction defect was then corrected from a second ? to &, and DEV-54 was built.
+DEV-54 was confirmed to be the workbook actually running. Its log showed api.github.com: object creation succeeded, Open succeeded, every header operation succeeded, but Send failed with NUMBER=-2147012889, SOURCE=WinHttp.WinHttpRequest, DESCRIPTION=The server name or address could not be resolved.
+Conclusion: api.github.com was also unresolvable from the corporate workstation. Therefore the GitHub-based runtime updater architecture is unusable in this environment. The evidence ruled out Base64, cache busting, artifact URL construction and the replacement stage as the active DEV-54 failure.
+
+### 10. DEV-55 — SharePoint-only runtime architecture
+Because both the current workbook and the distribution workbook are on SharePoint, the runtime updater was redesigned to avoid GitHub entirely.
+DEV-55 now uses the SharePoint distribution workbook URL. It opens that workbook through hidden Excel COM, read-only, with macros disabled, reads Intervention en cours!H2 as the remote version, compares it with the local version, and if newer opens the SharePoint workbook and creates a local temporary copy with SaveCopyAs. The existing replacement stage remains responsible for replacing/reopening the SharePoint workbook.
+Static audit of the embedded updater confirmed no github.com, raw.githubusercontent.com, api.github.com, WinHTTP, Base64 decoder, GitHub JSON parser or GitHub SHA-256 runtime path.
+
+### 11. DEV-55 CI and real-world result
+The first DEV-55 CI attempt failed because the Go VBA injector validator still required the old GitHub declarations (VERSION_URL, ARTIFACT_URL, HttpGetText, JsonValue, DownloadUpdate, FileSha256). The validator was updated to validate the SharePoint architecture and reject GitHub/WinHTTP runtime dependencies.
+The corrected DEV-55 pipeline passed injector, VBA syntax/pre-flight, XLSM build, final VBA validation, publication/checksum and artifact/latest-XLSM publication.
+DEV-55 was then opened in the corporate SharePoint environment. Proveri ažuriranje reported that the latest available version was already in use.
+This is real runtime evidence: DEV-55 successfully executed the new updater, reached the SharePoint distribution workbook, opened it through Excel COM, read H2, compared versions and reached the correct latest-version decision. It does not yet prove the newer-version download/replacement path.
+
+### 12. Controlled next test: DEV-55 -> DEV-56
+DEV-56 must be a version-only build. No updater source or architecture changes are allowed for this test.
+Running workbook: DEV-55. SharePoint distribution target: DEV-56. The test is specifically intended to exercise newer-version detection, local SaveCopyAs acquisition, SharePoint replacement and Excel reopen.
+If it fails, the next action is to inspect the new checkforupdate/updater logs and identify the exact failing stage before changing code. No more blind architecture or version iterations.
+
+### Process rule
+Do not treat this investigation as a list of DEV numbers. Each build exists because a specific hypothesis was tested or a concrete defect was corrected. Future changes must preserve this evidence chain and must not repeat already disproved approaches.
