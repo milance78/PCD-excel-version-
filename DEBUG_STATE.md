@@ -378,3 +378,22 @@ If it fails: STOP. Do not immediately create DEV-57. First collect checkforupdat
 
 ## Process rule
 Do not treat this investigation as a list of DEV numbers. Each build exists because a specific hypothesis was tested or a concrete defect was corrected. Future changes must preserve this evidence chain and must not repeat already disproved approaches.
+
+## 2026-10-08 — GitHub → SharePoint publication automation added
+
+The runtime updater was deliberately moved away from GitHub because the corporate workstation cannot resolve GitHub hosts through WinHTTP. The current runtime updater reads the latest workbook directly from SharePoint and therefore requires the SharePoint distribution workbook to actually receive each newly built DEV XLSM.
+
+The build workflow previously had no GitHub Actions → SharePoint publication step. This was the remaining architectural gap: GitHub produced DEV-56, but SharePoint still contained DEV-55, so DEV-55 correctly reported that it was current.
+
+Commit `fc1d20115753fc88623bd6abfd9e5c7d15357221` adds a GitHub Actions publication step using Microsoft Graph. It uploads `dist/PCD-Excel-Version-dev.xlsm` to the user's OneDrive/SharePoint path:
+`Documents/Desktop/PCD-Excel-Version-dev.xlsm`.
+
+The step uses GitHub Actions secrets (no credentials are hard-coded):
+- `MS_GRAPH_TENANT_ID`
+- `MS_GRAPH_CLIENT_ID`
+- `MS_GRAPH_CLIENT_SECRET`
+- `SHAREPOINT_USER_UPN`
+
+The corresponding Entra ID application must have Microsoft Graph **Application** permission `Files.ReadWrite.All` with admin consent. Until those four secrets and the app permission exist, the new step is intentionally skipped; the build itself remains functional. No user password or secret should be entered into chat.
+
+This is the first concrete implementation of the missing GitHub → SharePoint bridge. The next verification is not another updater DEV build: first configure the Graph credentials, then run one normal GitHub build and verify that SharePoint's `PCD-Excel-Version-dev.xlsm` contains the new DEV version. Only after that should the Excel updater be tested.
