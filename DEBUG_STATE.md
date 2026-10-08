@@ -155,3 +155,18 @@ Important: DEV-52 must not be tested until CI/publication is verified in VERSION
 DEV-52 is committed, but GitHub Actions run #257 (run id 37234022040) is stuck in pending with no job created. The workflow has concurrency group pcd-excel-build-main with cancel-in-progress=true, so a new main push should cancel the stale queued run and start a fresh build.
 
 DEV-52 target remains unchanged: GitHub API manifest + WinHTTP + pure VBA Base64 decoding, based on the decisive DEV-51 DNS evidence. No functional change is introduced here; this checkpoint only triggers CI recovery.
+
+
+## Checkpoint 2026-10-08 — DEV-52 pre-test review found second raw-GitHub dependency
+
+DEV-52 CI completed successfully: build, VBA compile, pre-flight syntax check, final XLSM VBA validation, artifact publication, and latest XLSM publication all succeeded.
+
+Before asking the user to test DEV-52, the exact updater source was reviewed end-to-end. A second concrete dependency on the unreachable `raw.githubusercontent.com` host was found in `DownloadUpdate`. That would have made DEV-52 fail at XLSM download even though the manifest path had been moved back to reachable `api.github.com`.
+
+DEV-53 targeted correction: keep the manifest on `api.github.com`; keep WinHTTP and pure-VBA Base64 decoding; change XLSM download to the GitHub Contents API on `api.github.com` and request the binary with `Accept: application/vnd.github.raw+json`; leave SHA-256 and SharePoint/VBS replacement unchanged.
+
+Commits:
+- 246a9eadff079d2f470be2ac7e67616c0941f5e1 — use reachable GitHub API for XLSM download
+- d796ac7b71c95242860fe9af6138f32b3e722c11 — bump DEV build to 53
+
+DEV-53 must be CI-built and its final artifact/source validated before any user test is requested.
