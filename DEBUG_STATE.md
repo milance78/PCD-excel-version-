@@ -507,3 +507,16 @@ Sledeći validan korak nije novi DEV build, nego obezbeđivanje autorizovanog Gi
 ## 9. Lekcija iz procesa
 
 Ne tvrditi da će se nešto „uraditi kasnije“ ili da će se rad nastaviti u pozadini. Model ne izvršava posao između poruka. Svaki sledeći korak mora biti obavljen i verifikovan u aktivnoj sesiji pre nego što se korisniku kaže da čeka ili da testira.
+
+
+# **KRUPNO I NEPOGREŠIVO: PROXIMUS IT SE NE KONTAKTIRA**
+
+**NEMA NIKAKVE ŠANSE BILO ŠTA TRAŽITI OD PROXIMUS IT-A.**
+
+Ovo je eksplicitno ograničenje projekta i mora se poštovati u svim narednim koracima. Ne predlagati korisniku da traži od Proximus IT-a admin approval, Entra ID aplikaciju, Microsoft Graph permission, client secret, service principal, tenant konfiguraciju ili bilo kakvu drugu intervenciju Proximus administratora.
+
+Ako neka predložena arhitektura zahteva Proximus IT/admin intervenciju, ta arhitektura se smatra **NEPRIHVATLJIVOM** za ovaj projekat i treba odmah tražiti drugo tehničko rešenje koje korisnik može sam da sprovede sa postojećim pristupima.
+
+Prethodni predlog da se obrati Proximus IT-u je zato **odbačen** i ne sme biti sledeći korak.
+
+Cilj ostaje isti: omogućiti automatski lanac GitHub build → dostupna nova XLSM verzija → SharePoint runtime updater, ali **bez ikakvog zahteva prema Proximus IT-u**.
