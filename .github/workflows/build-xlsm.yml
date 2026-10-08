@@ -119,34 +119,6 @@ jobs:
             !dist/PCD-Excel-Version-latest.xlsm
             !dist/PCD-Excel-Version-dev.xlsm
 
-      - name: Publish DEV XLSM to SharePoint
-        if: ${{ secrets.MS_GRAPH_TENANT_ID != '' && secrets.MS_GRAPH_CLIENT_ID != '' && secrets.MS_GRAPH_CLIENT_SECRET != '' && secrets.SHAREPOINT_USER_UPN != '' }}
-        env:
-          TENANT_ID: ${{ secrets.MS_GRAPH_TENANT_ID }}
-          CLIENT_ID: ${{ secrets.MS_GRAPH_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.MS_GRAPH_CLIENT_SECRET }}
-          USER_UPN: ${{ secrets.SHAREPOINT_USER_UPN }}
-        run: |
-          set -euo pipefail
-          FILE="dist/PCD-Excel-Version-dev.xlsm"
-          TOKEN_RESPONSE=$(curl -sS --fail \\
-            -X POST "https://login.microsoftonline.com/$TENANT_ID/oauth2/v2.0/token" \\
-            -H "Content-Type: application/x-www-form-urlencoded" \\
-            --data-urlencode "client_id=$CLIENT_ID" \\
-            --data-urlencode "client_secret=$CLIENT_SECRET" \\
-            --data-urlencode "scope=https://graph.microsoft.com/.default" \\
-            --data-urlencode "grant_type=client_credentials")
-          ACCESS_TOKEN=$(python -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' <<< "$TOKEN_RESPONSE")
-
-          curl -sS --fail \\
-            -X PUT \\
-            -H "Authorization: Bearer $ACCESS_TOKEN" \\
-            -H "Content-Type: application/vnd.ms-excel.sheet.macroEnabled.12" \\
-            --data-binary "@$FILE" \\
-            "https://graph.microsoft.com/v1.0/users/$USER_UPN/drive/root:/Documents/Desktop/PCD-Excel-Version-dev.xlsm:/content"
-
-          echo "SharePoint publication succeeded: $FILE"
-
       - name: Publish latest XLSM to repository
         run: |
           # Keep the freshly built files outside the working tree while we
