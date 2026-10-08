@@ -186,3 +186,35 @@ DEV-55 removes GitHub from the VBA updater runtime completely. The updater now:
 The build's manual-update hyperlinks are also redirected to the same SharePoint distribution file.
 
 This is a deliberate architecture change based on the confirmed corporate DNS failure, not another GitHub transport variant.
+
+
+## Checkpoint 2026-10-08 — DEV-54 failure and DEV-55 SharePoint verification
+
+DEV-54 was confirmed as the workbook actually being tested. Its runtime log showed that the updater reached WinHTTP.Send against api.github.com and failed with:
+"The server name or address could not be resolved."
+Therefore DEV-54 cannot perform its GitHub-based runtime update on the corporate workstation. DEV-54 is not a useful further test target.
+
+A deliberate architecture change was then made for DEV-55: GitHub was removed from the VBA updater runtime. The updater now uses the stable SharePoint workbook URL:
+PCD-Excel-Version-dev.xlsm
+
+DEV-55 CI initially failed because the existing Go VBA injector validator still required the old GitHub updater declarations. The validator was updated to require the SharePoint updater declarations and explicitly reject WinHTTP/GitHub runtime dependencies. The corrected DEV-55 CI run then passed:
+- VBA injector: success
+- VBA pre-flight syntax check: success
+- XLSM build: success
+- final XLSM VBA validation: success
+- artifact/checksum publication: success
+- latest XLSM publication: success
+
+DEV-55 was manually installed on the SharePoint distribution file and opened successfully. When "Proveri ažuriranje" was clicked, DEV-55 reported that the latest available version is already in use.
+
+This is significant evidence: the new SharePoint-based version-discovery path works in the real corporate Excel/SharePoint environment. It does NOT yet test the replacement/download path, because both the running workbook and SharePoint distribution workbook were DEV-55.
+
+Next controlled test:
+- keep the currently running workbook at DEV-55;
+- publish exactly one newer build, DEV-56, without changing updater logic;
+- put DEV-56 on the SharePoint distribution path;
+- run "Proveri ažuriranje" from DEV-55.
+
+The purpose of DEV-56 is only to create a newer target and test the complete DEV-55 -> DEV-56 replacement flow. No further updater architecture changes should be made unless that test produces new runtime evidence.
+
+Important: the user explicitly requested that this complete history be recorded in DEBUG_STATE.md so the process is not repeated or lost.
