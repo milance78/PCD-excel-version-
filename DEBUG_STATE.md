@@ -520,3 +520,314 @@ Ako neka predložena arhitektura zahteva Proximus IT/admin intervenciju, ta arhi
 Prethodni predlog da se obrati Proximus IT-u je zato **odbačen** i ne sme biti sledeći korak.
 
 Cilj ostaje isti: omogućiti automatski lanac GitHub build → dostupna nova XLSM verzija → SharePoint runtime updater, ali **bez ikakvog zahteva prema Proximus IT-u**.
+
+
+# 2026-10-08 — KORPORACIJSKO OKRUŽENJE: ZAVRŠNI REZULTATI TESTIRANJA I PRELAZ NA RUČNU DISTRIBUCIJU
+
+Ovaj odeljak je dodat kao završni handoff za novi chat. Sadrži rezultate testiranja iz stvarnog Proximus korporacijskog okruženja i mora se tretirati kao dokazano stanje, a ne kao pretpostavka.
+
+## A. Šta je dokazano u korporacijskom Excel/SharePoint runtime-u
+
+### A1. SharePoint workbook se može otvoriti i koristiti iz korporacijskog Excela
+Aktuelni workbook se otvara sa SharePoint HTTPS lokacije:
+`https://proximuscorp-my.sharepoint.com/personal/milan_pavlovic_proximus_com/Documents/Desktop/PCD-Excel-Version-dev.xlsm`
+
+To je stvarno okruženje u kojem je updater testiran.
+
+### A2. Windows file-system MOVE nije primenljiv na SharePoint URL
+Stari updater je pokušavao Windows MOVE/delete/staging operacije. Dokazani log:
+- OLD = SharePoint HTTPS URL
+- DELETE OK
+- MOVE ERROR 52 — Bad file name or number
+
+Zaključak: SharePoint URL nije lokalni Windows file path. Windows MOVE ne može da ga tretira kao lokalni fajl.
+
+### A3. Excel COM/SaveAs prema SharePoint-u može da radi
+U jednom stvarnom updater logu zabeležen je kompletan uspešan tok:
+- START
+- NEW = lokalni privremeni XLSM
+- OLD = SharePoint URL
+- STARTING EXCEL COM
+- OPENING NEW XLSM
+- SAVING TO SHAREPOINT URL
+- SAVEAS OK
+- OPENING SHAREPOINT COPY
+- REOPEN OK
+- END
+
+Zaključak: Excel COM + SharePoint replacement mehanizam je barem jednom uspešno izvršen u korporacijskom okruženju.
+
+### A4. DEV-34 je imao stvaran VBScript defect
+Generisani standalone VBScript je sadržao top-level `Exit Sub`, što nije validno u standalone VBScript-u. Ispravljeno je na `WScript.Quit 0`. Ovo je bio stvarni programski defect, ne korporacijski network problem.
+
+### A5. DEV-33 je dokazao da version comparison može da radi
+Kontrolisana dijagnostika je pokazala:
+- Local = DEV-33
+- Remote = DEV-33
+- Local build = 33
+- Remote build = 33
+
+Time su u tom testu dokazani manifest retrieval/parsing i comparison.
+
+## B. Tačno izolovani GitHub/network problemi u korporacijskom okruženju
+
+### B1. DEV-49 — MSXML greška posle HTTP Send
+DEV-49 log je pokazao:
+- WinHTTP/MSXML objekat uspešno kreiran
+- Open uspešan
+- svi request headers uspešni
+- Send uspešan
+- zatim:
+  - NUMBER = -2147024809
+  - SOURCE = msxml6.dll
+  - DESCRIPTION = The parameter is incorrect
+
+Zaključak: konkretan tadašnji failure bio je u response-handling putanji sa MSXML-om, posle uspešnog Send-a.
+
+### B2. DEV-51 — raw.githubusercontent.com nije razrešiv iz korporacijskog okruženja
+DEV-51 log:
+- CreateObject OK
+- Open OK
+- headers OK
+- Send FAIL
+- NUMBER = -2147012889
+- SOURCE = WinHttp.WinHttpRequest
+- DESCRIPTION = The server name or address could not be resolved
+- URL = raw.githubusercontent.com/.../VERSION.json
+
+Zaključak: korporacijski računar ne može da razreši `raw.githubusercontent.com` kroz ovaj runtime.
+
+### B3. DEV-54 — ni api.github.com nije razrešiv
+DEV-54 je bio stvarno otvoren/testiran workbook. Log je pokazao:
+- CreateObject OK
+- Open OK
+- headers OK
+- failure na Send
+- NUMBER = -2147012889
+- SOURCE = WinHttp.WinHttpRequest
+- DESCRIPTION = The server name or address could not be resolved
+- URL = api.github.com/.../VERSION.json
+
+Zaključak: GitHub runtime pristup nije upotrebljiv na korporacijskom računaru. Ovo nije više VBA hipoteza nego dokazano network/DNS ograničenje korporacijskog okruženja.
+
+### B4. DEV-50/52/53 nisu promenili zaključak
+Menjani su HTTP transport, Base64 dekoder i GitHub download endpoint da bi se izbegle konkretne MSXML/raw-host greške. Konačan DEV-54 test je dokazao da ni `api.github.com` nije razrešiv iz korporacijskog Excel runtime-a.
+
+Zato GitHub ne sme ostati runtime dependency embedded updater-a.
+
+## C. DEV-55 — SharePoint-only updater: stvarni korporacijski rezultat
+
+DEV-55 je napravljen tako da embedded updater više ne koristi GitHub/WinHTTP. Runtime source je direktno SharePoint workbook.
+
+DEV-55 updater:
+- otvara SharePoint workbook kroz Excel COM;
+- otvara ga read-only;
+- macros su disabled za COM instance;
+- čita `Intervention en cours!H2`;
+- poredi verziju sa lokalnom;
+- za update acquisition koristi SharePoint workbook i `SaveCopyAs`;
+- zadržava postojeći replacement/reopen mehanizam.
+
+Static audit je pokazao da runtime updater nema:
+- github.com
+- raw.githubusercontent.com
+- api.github.com
+- WinHTTP
+- MSXML HTTP transport
+- GitHub Base64/JSON runtime putanju.
+
+DEV-55 CI je nakon korekcije validatora uspešno prošao:
+- VBA injector
+- VBA pre-flight/syntax
+- XLSM build
+- final VBA validation
+- checksum/publication
+- artifact upload
+- latest XLSM publication.
+
+### C1. Najvažniji stvarni DEV-55 korporacijski test
+
+DEV-55 je ručno postavljen na SharePoint distribuciju i otvoren u korporacijskom Excel-u.
+
+Klik na `Proveri ažuriranje` dao je poruku da se koristi najnovija dostupna verzija.
+
+To je VAŽAN DOKAZ:
+- embedded VBA se izvršio;
+- GitHub/WinHTTP više nije bio deo runtime-a;
+- SharePoint distribucija je uspešno dohvaćena kroz Excel COM;
+- H2 je uspešno pročitan;
+- version comparison je uspešno urađen;
+- updater je doneo ispravnu odluku da nema novije verzije.
+
+Nije dokazano:
+- preuzimanje stvarno novije SharePoint verzije;
+- SaveCopyAs nove verzije;
+- replacement postojeće SharePoint radne knjige;
+- close/reopen;
+- finalni H2 nakon automatskog update-a.
+
+## D. DEV-56 — namerno kontrolisan version-only test
+
+DEV-56 je napravljen promenom samo verzije u `build/build_xlsm.py`. Updater source nije menjan.
+
+DEV-56 postoji u GitHub `dist/` direktorijumu.
+
+Poznato stanje:
+- GitHub DEV-56 artifact postoji;
+- SharePoint distribucija je u trenutku testiranja i dalje sadržala DEV-55.
+
+Zato DEV-55 na SharePoint-u nije mogao sam od sebe da pronađe DEV-56. To nije failure updater-a; remote source jednostavno nije bio ažuriran.
+
+## E. Pokušaj automatskog GitHub → SharePoint publish-a
+
+Dodat je GitHub Actions → Microsoft Graph SharePoint publication step:
+Commit:
+`fc1d20115753fc88623bd6abfd9e5c7d15357221`
+
+Cilj:
+`Documents/Desktop/PCD-Excel-Version-dev.xlsm`
+
+Koriste se secrets:
+- `MS_GRAPH_TENANT_ID`
+- `MS_GRAPH_CLIENT_ID`
+- `MS_GRAPH_CLIENT_SECRET`
+- `SHAREPOINT_USER_UPN`
+
+Ovaj pristup zahteva Entra ID application i admin consent. Zbog eksplicitnog korisničkog ograničenja da se Proximus IT NE kontaktira, ova arhitektura je ODBAČENA.
+
+Ne vraćati se na nju.
+
+## F. SharePoint ChatGPT connector test
+
+Korisnik je instalirao SharePoint konektor/plugin i pokušao da poveže Proximus Microsoft nalog.
+
+Tok:
+- postojeći konektovani nalog bio je `milance78@yahoo.com`;
+- izabrano je `Connect another account`;
+- pokrenut Microsoft login;
+- unet Proximus nalog `milan.pavlovic@proximus.com`;
+- Microsoft je prikazao **Need admin approval**.
+
+Zaključak:
+- ChatGPT SharePoint konektor sa Proximus nalogom nije dostupan bez Proximus admin odobrenja;
+- ovaj put je ZATVOREN;
+- ne pokušavati zaobilaženje admin approval-a.
+
+## G. Power Automate test u stvarnom Proximus okruženju — 2026-10-08
+
+Korisnik je sa korporacijskog računara uspešno otvorio Power Automate online i prijavio se Proximus Microsoft nalogom.
+
+Na početnom ekranu je bilo vidljivo:
+- Proximus branding;
+- Power Automate;
+- environment: `Personal Use & Integrat...`;
+- opcije Automated cloud flow, Instant cloud flow, Scheduled cloud flow, Desktop flow.
+
+Time je dokazano:
+**Power Automate online login preko Proximus naloga RADI.**
+
+Napomena: ovo ne dokazuje licencu za sve konektore niti mogućnost korišćenja svakog premium connector-a; samo potvrđuje da je Power Automate online dostupan.
+
+### G1. Instant cloud flow test
+
+Kreiran je test flow:
+`PCD - GitHub to Sharepoint - TEST`
+
+Trigger:
+`Manually trigger a flow`
+
+Flow editor se uspešno otvorio.
+
+### G2. GitHub connector test
+
+U Add an action pretrazi za `GitHub` prikazan je native **GitHub** connector sa akcijama kao što su:
+- Search Github using Query
+- Update an Issue
+- Get all Pull Requests of a Repository
+- Create a pull request
+- itd.
+
+Time je dokazano:
+**GitHub connector je vidljiv u korisnikovom Power Automate okruženju.**
+
+### G3. Pretraga za `Get file content`
+
+U pretrazi `Get file content` prikazane su:
+- OneDrive for Business — Get file content
+- OneDrive for Business — Get file content using path
+- SharePoint — Get file content using path
+- SharePoint — Get file content
+- SharePoint — Update file
+
+U prikazanom rezultatu NIJE postojala GitHub akcija `Get file content`.
+
+Zato nije dokazano da ovaj Power Automate GitHub connector može direktno da preuzme repository binary XLSM fajl. Flow nije dalje razvijan niti testiran.
+
+### G4. Odluka nakon Power Automate testa
+
+Pošto je korisnik eksplicitno rekao da je izgubio ogroman broj dana i da više nema snage za dalji ciklus testiranja, odlučeno je da se Power Automate putanja NE nastavlja.
+
+Ne trošiti dodatno korisnikovo vreme na istraživanje GitHub Power Automate akcija.
+
+## H. KONAČNA ODLUKA ZA OVAJ CIKLUS
+
+Korisnik je eksplicitno odlučio da je prihvatljiv i poželjan najjednostavniji model:
+
+**Ja napravim i proverim XLSM → korisnik ga ručno preuzme → korisnik ručno zameni SharePoint fajl.**
+
+Mogući kanali za ručno preuzimanje:
+- GitHub
+- Dropbox, ako bude potrebno.
+
+Za ovaj ciklus NE razvijati automatsku distribuciju.
+
+### H1. Šta korisnik želi da se izbegne
+
+- nema Proximus IT;
+- nema admin approval;
+- nema Entra ID;
+- nema Graph secrets;
+- nema Power Automate eksperimentisanja;
+- nema novih DEV buildova samo radi testiranja distribucije;
+- nema novih network eksperimenata iz Excel VBA;
+- nema ponavljanja već dokazanih testova.
+
+### H2. Pravilo za sledeći chat
+
+Ako korisnik u novom chatu kaže da želi da nastavimo ovaj projekat, prvo pročitati `DEBUG_STATE.md` i koristiti ovaj handoff.
+
+Ne vraćati se na DEV-49, DEV-50, DEV-51, DEV-52, DEV-53 ili DEV-54 kao da njihovi rezultati nisu poznati.
+
+Ne predlagati Proximus IT.
+
+Ne predlagati ponovni GitHub runtime updater.
+
+Ne predlagati novi DEV build dok ne postoji konkretna funkcionalna promena koju korisnik želi.
+
+Ako je cilj samo dobiti gotov Excel, koristiti postojeći CI/build i ručnu distribuciju.
+
+## I. Trenutno stanje na kraju ovog ciklusa
+
+- Power Automate online login: **DA**
+- Power Automate Instant flow kreiran: **DA**
+- GitHub connector vidljiv: **DA**
+- GitHub `Get file content` akcija pronađena u prikazanom rezultatu: **NE**
+- Power Automate flow izvršen end-to-end: **NE**
+- ChatGPT SharePoint connector sa Proximus nalogom: **NE — admin approval blokira**
+- GitHub runtime iz korporacijskog Excela: **NE — DNS/name resolution blokira GitHub hostove**
+- SharePoint runtime iz korporacijskog Excela: **DA — DEV-55 je uspešno pročitao remote H2**
+- DEV-55 → DEV-56 automatski replacement: **NIJE TESTIRAN**
+- DEV-56 u GitHub-u: **DA**
+- DEV-56 na SharePoint distribuciji: **NE, u trenutku ovog handoff-a SharePoint je ostao na DEV-55**
+- Proximus IT kontakt: **ZABRANJEN / NE RADI SE**
+- Preporučeni praktični model sada: **ručno preuzimanje gotovog XLSM-a i ručna zamena SharePoint fajla**
+
+## J. Najvažniji zaključak
+
+Posle svih korporacijskih testova, jedina potpuno dokazana i trenutno najmanje rizična distribucija je:
+
+**GitHub/CI build → ručno preuzimanje XLSM-a → ručna zamena SharePoint workbook-a.**
+
+Automatski updater ostaje SharePoint-only i dokazano može da čita verziju iz SharePoint-a, ali njegova potpuna automatska replacement putanja nije dokazana i više nije prioritet za ovaj ciklus.
+
+Novi chat treba da počne od ovog stanja, bez ponovnog eksperimentisanja sa korporacijskim mrežnim ograničenjima.
