@@ -438,7 +438,11 @@ Private Function ParseStatusValue(ByVal safe As Object, ByVal work As Object, By
     d("snowMentioned")=DictGet(work,"snowMentioned")
     d("oagID")=FirstValue(DictGet(work,"oagID"),DictGet(safe,"oagID"))
     d("clientID")=FirstValue(MeaningfulBusiness(DictGet(work,"clientID")),MeaningfulBusiness(DictGet(safe,"clientID")))
-    d("clientName")=FirstValue(DictGet(safe,"clientName"),DictGet(work,"clientName"))
+    If NormalizeNetwork(text) = "mobileVikings" Then
+        d("clientName")=FirstValue(DictGet(work,"clientName"),DictGet(safe,"clientName"))
+    Else
+        d("clientName")=FirstValue(DictGet(safe,"clientName"),DictGet(work,"clientName"))
+    End If
     d("infrastructure")=FirstValue(DictGet(safe,"infrastructure"),DictGet(work,"infrastructure"))
     d("na")=FirstValue(DictGet(safe,"na"),DictGet(work,"na"))
     d("cid")=FirstValue(DictGet(safe,"cid"),DictGet(work,"cid"))
