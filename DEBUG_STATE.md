@@ -170,3 +170,19 @@ Commits:
 - d796ac7b71c95242860fe9af6138f32b3e722c11 — bump DEV build to 53
 
 DEV-53 must be CI-built and its final artifact/source validated before any user test is requested.
+
+
+## Checkpoint 2026-10-08 — DEV-55 SharePoint runtime source
+
+DEV-54 runtime evidence is decisive: WinHTTP cannot resolve api.github.com on the corporate workstation, so GitHub cannot be a runtime update transport.
+
+DEV-55 removes GitHub from the VBA updater runtime completely. The updater now:
+- reads the current published version from the stable SharePoint workbook URL PCD-Excel-Version-dev.xlsm using Excel.Workbooks.Open;
+- opens that SharePoint workbook read-only in a separate Excel COM instance with macros disabled;
+- compares its H2 version with the running workbook;
+- saves the SharePoint workbook to a local temporary XLSM with Workbook.SaveCopyAs;
+- keeps the existing SharePoint replacement/reopen path.
+
+The build's manual-update hyperlinks are also redirected to the same SharePoint distribution file.
+
+This is a deliberate architecture change based on the confirmed corporate DNS failure, not another GitHub transport variant.
