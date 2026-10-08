@@ -160,31 +160,19 @@ func main() {
 
             if !strings.Contains(
                 m.Source,
-                "Private Const VERSION_URL As String",
+                "Private Const SHAREPOINT_LATEST_URL As String",
             ) ||
                 !strings.Contains(
                     m.Source,
-                    "Private Const ARTIFACT_URL As String",
+                    "Private Function GetSharePointLatestVersion(ByVal sharePointUrl As String)",
                 ) ||
                 !strings.Contains(
                     m.Source,
-                    "Private Function HttpGetText(ByVal url As String)",
-                ) ||
-                !strings.Contains(
-                    m.Source,
-                    "Private Function JsonValue(ByVal json As String, ByVal key As String)",
+                    "Private Function DownloadSharePointUpdate(ByVal sharePointUrl As String, ByVal remoteVersion As String)",
                 ) ||
                 !strings.Contains(
                     m.Source,
                     "Private Function CompareVersions(ByVal a As String, ByVal b As String)",
-                ) ||
-                !strings.Contains(
-                    m.Source,
-                    "Private Function DownloadUpdate(ByVal remoteVersion As String, ByVal cacheBust As String)",
-                ) ||
-                !strings.Contains(
-                    m.Source,
-                    "Private Function FileSha256(ByVal filePath As String)",
                 ) ||
                 !strings.Contains(
                     m.Source,
@@ -195,16 +183,15 @@ func main() {
                     "Private Function QuoteArg(ByVal value As String)",
                 ) {
                 panic(
-                    "post-write VBA validation: production updater declarations missing",
+                    "post-write VBA validation: SharePoint updater declarations missing",
                 )
             }
 
-            if !strings.Contains(
-                m.Source,
-                "Dim localSha256 As String",
-            ) {
+            if strings.Contains(m.Source, "WinHttp.WinHttpRequest") ||
+                strings.Contains(m.Source, "raw.githubusercontent.com") ||
+                strings.Contains(m.Source, "api.github.com") {
                 panic(
-                    "post-write VBA validation: real updater code is incomplete",
+                    "post-write VBA validation: GitHub/WinHTTP runtime dependency remains",
                 )
             }
 
