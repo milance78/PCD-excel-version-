@@ -4,7 +4,7 @@ import xlsxwriter
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
-VERSION = "0.1.0-dev-54"
+VERSION = "0.1.0-dev-55"
 OUTPUT = DIST / f"PCD-Excel-Version-{VERSION}.xlsm"
 VBA_BIN = ROOT / "build" / "vbaProject.bin"
 
@@ -34,7 +34,7 @@ link = wb.add_format({"font_color": "#0563C1", "underline": 1, "align": "center"
 
 main.merge_range("A1:H1", "INTERVENTION EN COURS", title)
 main.write_url("F2", "internal:'Magic Import'!B5", link, "Import intelligent")
-main.write_url("G2", "https://github.com/milance78/PCD-excel-version-/raw/refs/heads/main/dist/PCD-Excel-Version-latest.xlsm", link, "Mettre à jour")
+main.write_url("G2", "https://proximuscorp-my.sharepoint.com/personal/milan_pavlovic_proximus_com/Documents/Desktop/PCD-Excel-Version-dev.xlsm", link, "Mettre à jour")
 main.write("H2", VERSION, label)
 
 fields = [
@@ -65,6 +65,6 @@ magic.merge_range("A2:H3", "Colle le texte SAFE / NPS / Work Item dans la grande
 magic.merge_range("B5:H22", "", wb.add_format({"border": 1, "text_wrap": True, "valign": "top"}))
 magic.insert_button("B24", {"macro": "ImportMagicFromSheet", "caption": "Importer", "width": 110, "height": 28})
 magic.write_url("D24", "internal:'Intervention en cours'!A1", link, "Retour")
-magic.write_url("F24", "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-latest.xlsm", link, "Preuzmi ručno najnoviju verziju")
+magic.write_url("F24", "https://proximuscorp-my.sharepoint.com/personal/milan_pavlovic_proximus_com/Documents/Desktop/PCD-Excel-Version-dev.xlsm", link, "Preuzmi ručno najnoviju verziju")
 wb.close()
 print(OUTPUT)
