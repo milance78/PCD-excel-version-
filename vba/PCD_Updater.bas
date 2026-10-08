@@ -200,7 +200,7 @@ Private Function DownloadUpdate(ByVal remoteVersion As String, ByVal cacheBust A
     Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
     http.Option(6) = True
     http.SetTimeouts 30000, 30000, 30000, 30000
-    http.Open "GET", ARTIFACT_URL & "?v=" & Replace(remoteVersion, " ", "%20") & "&pcd=" & cacheBust, False
+    http.Open "GET", ARTIFACT_URL & "&v=" & Replace(remoteVersion, " ", "%20") & "&pcd=" & cacheBust, False
     http.SetRequestHeader "Cache-Control", "no-cache"
     http.SetRequestHeader "Pragma", "no-cache"
     http.SetRequestHeader "Accept", "application/vnd.github.raw+json"
