@@ -397,3 +397,113 @@ The step uses GitHub Actions secrets (no credentials are hard-coded):
 The corresponding Entra ID application must have Microsoft Graph **Application** permission `Files.ReadWrite.All` with admin consent. Until those four secrets and the app permission exist, the new step is intentionally skipped; the build itself remains functional. No user password or secret should be entered into chat.
 
 This is the first concrete implementation of the missing GitHub → SharePoint bridge. The next verification is not another updater DEV build: first configure the Graph credentials, then run one normal GitHub build and verify that SharePoint's `PCD-Excel-Version-dev.xlsm` contains the new DEV version. Only after that should the Excel updater be tested.
+
+
+# 2026-10-08 — SharePoint konektor, Proximus admin approval i zaključak o automatizaciji
+
+## 1. Zašto smo pokušali SharePoint konektor
+
+Do ove tačke utvrđeno je da korporativni računar ne može preko WinHTTP-a da razreši GitHub hostove. DEV-54 je to dokazao u stvarnom Excel runtime-u: WinHTTP je padao na `Send` sa `The server name or address could not be resolved` za `api.github.com`. Zbog toga je runtime updater promenjen tako da više ne zavisi od GitHub-a, već da najnoviju verziju čita direktno iz SharePoint-a.
+
+DEV-55 je zatim uspešno pokazao da takav updater može da pročita H2 verziju iz SharePoint workbook-a. Time je potvrđeno da Excel → SharePoint deo radi za čitanje.
+
+Problem koji je ostao bio je suprotan smer: GitHub Actions napravi novi XLSM (DEV-56), ali workflow nema mehanizam da ga automatski postavi na Proximus SharePoint. Zato je DEV-56 postojao u GitHub-u, dok je SharePoint i dalje sadržao DEV-55, pa je updater ispravno javljao da koristi najnoviju dostupnu verziju.
+
+## 2. Šta je urađeno u GitHub repozitorijumu
+
+U workflow `.github/workflows/build-xlsm.yml` dodat je korak za objavljivanje `dist/PCD-Excel-Version-dev.xlsm` na SharePoint/OneDrive putanju preko Microsoft Graph-a.
+
+Commit:
+`fc1d20115753fc88623bd6abfd9e5c7d15357221`
+
+Ciljna putanja:
+`Documents/Desktop/PCD-Excel-Version-dev.xlsm`
+
+Korak koristi GitHub Actions secrets i ne hardkoduje nikakve Microsoft kredencijale.
+
+Potrebni secrets su:
+- `MS_GRAPH_TENANT_ID`
+- `MS_GRAPH_CLIENT_ID`
+- `MS_GRAPH_CLIENT_SECRET`
+- `SHAREPOINT_USER_UPN`
+
+Workflow je namerno napravljen tako da se SharePoint korak preskače ako ovi secrets nisu podešeni. Time postojeći GitHub build ostaje funkcionalan dok se ne obezbedi autorizacija.
+
+## 3. Zašto secrets još nisu podešeni
+
+Korisnik nije imao razloga da zna šta su GitHub Repository Secrets, Microsoft Entra ID, Microsoft Graph ili service principal; prethodno objašnjenje je bilo previše tehničko i korisniku je napravljeno nepotrebno opterećenje.
+
+Pokušali smo jednostavniju varijantu: ChatGPT SharePoint konektor.
+
+Korisnik je na svom ChatGPT nalogu instalirao SharePoint plugin/konektor. U početku je bio povezan Yahoo nalog `milance78@yahoo.com`, koji nema veze sa Proximus SharePoint distribucijom.
+
+Korisnik je izabrao **Connect another account** i pokrenuo Microsoft SharePoint autorizaciju. Na Microsoft login ekranu je uneo Proximus poslovni nalog:
+`milan.pavlovic@proximus.com`
+
+Microsoft je zatim prikazao ekran:
+**Need admin approval**
+
+Poruka je jasno navela da ChatGPT/OpenAI aplikacija traži pristup resursima organizacije koji samo administrator može da odobri. Korisnik nije imao mogućnost da to odobri kao običan korisnik.
+
+Zaključak: ChatGPT SharePoint konektor ne može biti korišćen sa Proximus nalogom dok Proximus administrator ne odobri traženu aplikaciju/dozvole.
+
+## 4. Šta korisnik NE treba da radi
+
+- Ne treba da pokušava da zaobiđe Proximus admin approval.
+- Ne treba da klikće **Have an admin account?** osim ako zaista ima administratorski Proximus nalog.
+- Ne treba da pravi nove DEV verzije samo zbog ovog problema.
+- Ne treba da testira Excel updater dok DEV-56 stvarno nije objavljen na SharePoint-u.
+- Ne treba da šalje client secret kroz chat ili običan email.
+
+## 5. Trenutni stvarni lanac
+
+Željeni lanac je:
+
+GitHub commit → GitHub Actions build DEV-X → `dist/PCD-Excel-Version-dev.xlsm` → autorizovani upload na Proximus SharePoint → Excel koji je na SharePoint-u čita H2 → detektuje DEV-X → preuzima SharePoint workbook → izvršava postojeći replacement → otvara novu verziju.
+
+Trenutno su dokazani:
+- GitHub build: DA
+- generisanje DEV-56: DA
+- Excel runtime čitanje SharePoint verzije: DA
+- SharePoint konektor sa privatnim Yahoo nalogom: DA, ali nerelevantan za Proximus fajl
+- SharePoint konektor sa Proximus nalogom: BLOKIRAN Proximus admin approval-om
+- GitHub Actions → SharePoint upload: KOD DODAT, ali NIJE AKTIVAN dok se ne obezbedi Microsoft autorizacija
+- DEV-56 stvarno objavljen na Proximus SharePoint: JOŠ NIJE DOKAZANO
+
+## 6. Zahtev prema Proximus IT-u
+
+Ako se ide na GitHub Actions + Microsoft Graph varijantu, potrebno je da Proximus IT/administrator obezbedi Entra ID aplikaciju/service principal koji GitHub Actions-u omogućava da ažurira navedeni fajl u OneDrive/SharePoint drive-u.
+
+Predloženi zahtev IT-u:
+
+> I need a Microsoft Entra ID application/service principal that allows GitHub Actions to upload/update one file in my OneDrive/SharePoint drive using Microsoft Graph.
+>
+> Target file:
+> `Documents/Desktop/PCD-Excel-Version-dev.xlsm`
+>
+> Required Microsoft Graph application permission:
+> `Files.ReadWrite.All`
+>
+> Please provide the Application (client) ID and Tenant ID, and create a client secret/certificate suitable for use as GitHub Actions secrets.
+
+Napomena: način izdavanja i čuvanja client secret-a mora pratiti Proximus IT/security proceduru; secret ne treba slati kroz ChatGPT.
+
+## 7. Važna arhitektonska odluka
+
+Ne vraćati runtime updater na GitHub kao izvor verzije/fajla. Korporativni runtime je već dokazano blokiran na GitHub DNS/WinHTTP putanji. GitHub treba da ostane build/distribution pipeline, dok SharePoint ostaje runtime source koji Excel može da otvori u postojećem korporativnom okruženju.
+
+Ovo nije novi DEV build problem. Pre sledećeg Excel testa mora biti potvrđeno da SharePoint fajl `PCD-Excel-Version-dev.xlsm` zaista sadrži novu verziju (npr. DEV-56).
+
+## 8. Trenutni status
+
+Poslednja izgrađena verzija: DEV-56.
+
+DEV-56 je napravljen promenom samo verzije u `build/build_xlsm.py`; updater kod nije menjan u tom buildu.
+
+SharePoint distribucija je još uvek DEV-55.
+
+Sledeći validan korak nije novi DEV build, nego obezbeđivanje autorizovanog GitHub Actions → SharePoint upload-a. Tek posle uspešnog upload-a treba uraditi jedan runtime test DEV-55 → DEV-56.
+
+## 9. Lekcija iz procesa
+
+Ne tvrditi da će se nešto „uraditi kasnije“ ili da će se rad nastaviti u pozadini. Model ne izvršava posao između poruka. Svaki sledeći korak mora biti obavljen i verifikovan u aktivnoj sesiji pre nego što se korisniku kaže da čeka ili da testira.
