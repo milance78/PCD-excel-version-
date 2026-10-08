@@ -1,8 +1,7 @@
 Attribute VB_Name = "PCD_Updater"
 Option Explicit
 
-Private Const VERSION_URL As String = "https://api.github.com/repos/milance78/PCD-excel-version-/contents/VERSION.json?ref=main"
-Private Const ARTIFACT_URL As String = "https://api.github.com/repos/milance78/PCD-excel-version-/contents/dist/PCD-Excel-Version-latest.xlsm?ref=main"
+Private Const SHAREPOINT_LATEST_URL As String = "https://proximuscorp-my.sharepoint.com/personal/milan_pavlovic_proximus_com/Documents/Desktop/PCD-Excel-Version-dev.xlsm"
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
 Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hwnd As LongPtr, ByRef lpdwProcessId As Long) As Long
@@ -28,7 +27,6 @@ Public Sub CheckForUpdate()
 
     Dim currentVersion As String
     Dim remoteVersion As String
-    Dim remoteSha256 As String
     Dim manifestText As String
     Dim tempPath As String
     Dim answer As VbMsgBoxResult
@@ -42,19 +40,13 @@ Public Sub CheckForUpdate()
     If Len(currentVersion) = 0 Then currentVersion = "0.0.0"
 
     Application.StatusBar = "PCD Excel: proveravam novu verziju..."
-    stage = "CREATE CACHE BUSTER"
-    cacheBust = CStr(CLng(Timer * 1000))
+    stage = "BEFORE SHAREPOINT VERSION"
+    LogCheckPoint "BEFORE SHAREPOINT VERSION"
+    remoteVersion = GetSharePointLatestVersion(SHAREPOINT_LATEST_URL)
+    stage = "AFTER SHAREPOINT VERSION"
+    LogCheckPoint "AFTER SHAREPOINT VERSION"
 
-    stage = "BEFORE MANIFEST HTTP"
-    LogCheckPoint "BEFORE MANIFEST HTTP"
-    manifestText = Base64Decode(JsonValue(HttpGetText(VERSION_URL & "&t=" & cacheBust), "content"))
-    stage = "AFTER MANIFEST HTTP"
-    LogCheckPoint "AFTER MANIFEST HTTP"
-    remoteVersion = JsonValue(manifestText, "version")
-    remoteSha256 = LCase$(JsonValue(manifestText, "sha256"))
-
-    If Len(remoteVersion) = 0 Then Err.Raise vbObjectError + 1001, , "GitHub nije vratio broj verzije."
-    If Len(remoteSha256) <> 64 Then Err.Raise vbObjectError + 1002, , "GitHub nije vratio ispravan SHA-256."
+    If Len(remoteVersion) = 0 Then Err.Raise vbObjectError + 1001, , "SharePoint nije vratio broj verzije."
 
     stage = "BEFORE VERSION COMPARE"
     LogCheckPoint "BEFORE VERSION COMPARE"
@@ -89,28 +81,12 @@ Public Sub CheckForUpdate()
 
     stage = "BEFORE DOWNLOAD"
     LogCheckPoint "BEFORE DOWNLOAD"
-    tempPath = DownloadUpdate(remoteVersion, cacheBust)
+    tempPath = DownloadSharePointUpdate(SHAREPOINT_LATEST_URL, remoteVersion)
     stage = "AFTER DOWNLOAD"
     LogCheckPoint "AFTER DOWNLOAD"
     If Len(tempPath) = 0 Then Err.Raise vbObjectError + 1003, , "Preuzimanje nove verzije nije uspelo."
 
-    Application.StatusBar = "PCD Excel: proveravam integritet nove verzije..."
-    stage = "BEFORE SHA256"
-    LogCheckPoint "BEFORE SHA256"
-    localSha256 = LCase$(FileSha256(tempPath))
-    stage = "AFTER SHA256"
-    LogCheckPoint "AFTER SHA256"
-
-    If localSha256 <> remoteSha256 Then
-        On Error Resume Next
-        Kill tempPath
-        On Error GoTo UpdateError
-        Err.Raise vbObjectError + 1004, , _
-            "SHA-256 kontrola nije prosla." & vbCrLf & _
-            "Ocekivani: " & remoteSha256 & vbCrLf & _
-            "Dobijeni: " & localSha256
-    End If
-
+    Application.StatusBar = "PCD Excel: proveravam preuzetu verziju..."
     If LCase$(Right$(ThisWorkbook.Name, 5)) <> ".xlsm" Then
         Err.Raise vbObjectError + 1005, , "Automatsko azuriranje je podrzano za .xlsm fajl."
     End If
@@ -152,152 +128,93 @@ Private Sub LogCheckPoint(ByVal value As String)
     ts.Close
 End Sub
 
-Private Function HttpGetText(ByVal url As String) As String
-    Dim http As Object
+Private Function GetSharePointLatestVersion(ByVal sharePointUrl As String) As String
+    Dim xl As Object
+    Dim wb As Object
+    Dim oldSecurity As Long
 
-    LogCheckPoint "HTTP URL=" & url
-    LogCheckPoint "HTTP BEFORE CREATEOBJECT"
-    Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
-    LogCheckPoint "HTTP AFTER CREATEOBJECT"
+    On Error GoTo ErrorHandler
+    LogCheckPoint "SP VERSION BEFORE EXCEL"
 
-    http.Option(6) = True
-    http.SetTimeouts 30000, 30000, 30000, 30000
+    Set xl = CreateObject("Excel.Application")
+    xl.Visible = False
+    xl.DisplayAlerts = False
+    xl.EnableEvents = False
+    oldSecurity = xl.AutomationSecurity
+    xl.AutomationSecurity = 3
 
-    LogCheckPoint "HTTP BEFORE OPEN"
-    http.Open "GET", url, False
-    LogCheckPoint "HTTP AFTER OPEN"
+    LogCheckPoint "SP VERSION BEFORE OPEN"
+    Set wb = xl.Workbooks.Open(sharePointUrl, 0, True, , , , True, , , , False)
+    LogCheckPoint "SP VERSION AFTER OPEN"
 
-    LogCheckPoint "HTTP BEFORE HEADER CACHE"
-    http.SetRequestHeader "Cache-Control", "no-cache"
-    LogCheckPoint "HTTP AFTER HEADER CACHE"
+    xl.AutomationSecurity = oldSecurity
+    GetSharePointLatestVersion = Trim$(CStr(wb.Worksheets("Intervention en cours").Range("H2").Value))
 
-    LogCheckPoint "HTTP BEFORE HEADER PRAGMA"
-    http.SetRequestHeader "Pragma", "no-cache"
-    LogCheckPoint "HTTP AFTER HEADER PRAGMA"
+    wb.Close False
+    Set wb = Nothing
+    xl.Quit
+    Set xl = Nothing
+    Exit Function
 
-    LogCheckPoint "HTTP BEFORE SEND"
-    http.Send
-    LogCheckPoint "HTTP AFTER SEND"
-
-    If http.Status < 200 Or http.Status >= 300 Then
-        Err.Raise vbObjectError + 1010, , "GitHub HTTP greska: " & http.Status & " " & http.StatusText
-    End If
-
-    HttpGetText = CStr(http.ResponseText)
+ErrorHandler:
+    On Error Resume Next
+    If Not wb Is Nothing Then wb.Close False
+    If Not xl Is Nothing Then xl.Quit
+    Set wb = Nothing
+    Set xl = Nothing
+    Err.Raise vbObjectError + 1010, , "SharePoint provera verzije nije uspela." & vbCrLf & Err.Description
 End Function
 
-Private Function DownloadUpdate(ByVal remoteVersion As String, ByVal cacheBust As String) As String
-    Dim http As Object
-    Dim stream As Object
+Private Function DownloadSharePointUpdate(ByVal sharePointUrl As String, ByVal remoteVersion As String) As String
+    Dim xl As Object
+    Dim wb As Object
     Dim tempPath As String
+    Dim oldSecurity As Long
+    Dim openedVersion As String
 
     tempPath = Environ$("TEMP") & "\PCD-Excel-update-" & Replace(remoteVersion, ".", "_") & ".xlsm"
 
     On Error Resume Next
     Kill tempPath
-    On Error GoTo 0
+    On Error GoTo ErrorHandler
 
-    Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
-    http.Option(6) = True
-    http.SetTimeouts 30000, 30000, 30000, 30000
-    http.Open "GET", ARTIFACT_URL & "&v=" & Replace(remoteVersion, " ", "%20") & "&pcd=" & cacheBust, False
-    http.SetRequestHeader "Cache-Control", "no-cache"
-    http.SetRequestHeader "Pragma", "no-cache"
-    http.SetRequestHeader "Accept", "application/vnd.github.raw+json"
-    http.Send
+    LogCheckPoint "SP DOWNLOAD BEFORE EXCEL"
+    Set xl = CreateObject("Excel.Application")
+    xl.Visible = False
+    xl.DisplayAlerts = False
+    xl.EnableEvents = False
+    oldSecurity = xl.AutomationSecurity
+    xl.AutomationSecurity = 3
 
-    If http.Status < 200 Or http.Status >= 300 Then
-        Err.Raise vbObjectError + 1011, , "Preuzimanje XLSM fajla nije uspelo: HTTP " & http.Status
+    LogCheckPoint "SP DOWNLOAD BEFORE OPEN"
+    Set wb = xl.Workbooks.Open(sharePointUrl, 0, True, , , , True, , , , False)
+    LogCheckPoint "SP DOWNLOAD AFTER OPEN"
+
+    xl.AutomationSecurity = oldSecurity
+    openedVersion = Trim$(CStr(wb.Worksheets("Intervention en cours").Range("H2").Value))
+    If CompareVersions(openedVersion, remoteVersion) <> 0 Then
+        Err.Raise vbObjectError + 1011, , "SharePoint fajl se promenio tokom preuzimanja."
     End If
 
-    Set stream = CreateObject("ADODB.Stream")
-    stream.Type = 1
-    stream.Open
-    stream.Write http.responseBody
-    stream.SaveToFile tempPath, 2
-    stream.Close
+    LogCheckPoint "SP DOWNLOAD BEFORE SAVECOPYAS"
+    wb.SaveCopyAs tempPath
+    LogCheckPoint "SP DOWNLOAD AFTER SAVECOPYAS"
 
-    DownloadUpdate = tempPath
-End Function
+    wb.Close False
+    Set wb = Nothing
+    xl.Quit
+    Set xl = Nothing
 
-Private Function FileSha256(ByVal filePath As String) As String
-    Dim outputPath As String
-    Dim shell As Object
-    Dim fso As Object
-    Dim ts As Object
-    Dim text As String
-    Dim matches As Object
-    Dim re As Object
+    DownloadSharePointUpdate = tempPath
+    Exit Function
 
-    outputPath = Environ$("TEMP") & "\PCD-sha256-" & Format$(Timer * 1000, "0") & ".txt"
-
-    Set shell = CreateObject("WScript.Shell")
-    shell.Run "cmd.exe /c certutil -hashfile " & QuoteArg(filePath) & " SHA256 > " & QuoteArg(outputPath), 0, True
-
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    If Not fso.FileExists(outputPath) Then Err.Raise vbObjectError + 1012, , "Windows nije mogao da izracuna SHA-256."
-
-    Set ts = fso.OpenTextFile(outputPath, 1, False)
-    text = ts.ReadAll
-    ts.Close
+ErrorHandler:
     On Error Resume Next
-    fso.DeleteFile outputPath, True
-    On Error GoTo 0
-
-    Set re = CreateObject("VBScript.RegExp")
-    re.Global = False
-    re.IgnoreCase = True
-    re.Pattern = "([0-9A-Fa-f]{64})"
-    Set matches = re.Execute(text)
-
-    If matches.Count = 0 Then Err.Raise vbObjectError + 1013, , "Windows nije vratio SHA-256 vrednost."
-    FileSha256 = LCase$(matches(0).Value)
-End Function
-
-Private Function Base64Decode(ByVal encoded As String) As String
-    Dim alphabet As String
-    Dim clean As String
-    Dim i As Long
-    Dim value As Long
-    Dim buffer As Long
-    Dim bits As Long
-    Dim ch As String
-    Dim result As String
-
-    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    clean = Replace(encoded, vbCr, "")
-    clean = Replace(clean, vbLf, "")
-    clean = Replace(clean, "=", "")
-
-    For i = 1 To Len(clean)
-        ch = Mid$(clean, i, 1)
-        value = InStr(1, alphabet, ch, vbBinaryCompare) - 1
-        If value < 0 Then Err.Raise vbObjectError + 1014, , "Neispravan Base64 odgovor sa GitHub-a."
-
-        buffer = buffer * 64 + value
-        bits = bits + 6
-
-        Do While bits >= 8
-            bits = bits - 8
-            result = result & Chr$(CLng((buffer \ (2 ^ bits)) And 255))
-            buffer = buffer And ((2 ^ bits) - 1)
-        Loop
-    Next i
-
-    Base64Decode = result
-End Function
-
-Private Function JsonValue(ByVal json As String, ByVal key As String) As String
-    Dim re As Object
-    Dim matches As Object
-
-    Set re = CreateObject("VBScript.RegExp")
-    re.Global = False
-    re.IgnoreCase = True
-    re.Pattern = Chr(34) & key & Chr(34) & "\s*:\s*" & Chr(34) & "([^" & Chr(34) & "]*)" & Chr(34)
-    Set matches = re.Execute(json)
-
-    If matches.Count > 0 Then JsonValue = matches(0).SubMatches(0)
+    If Not wb Is Nothing Then wb.Close False
+    If Not xl Is Nothing Then xl.Quit
+    Set wb = Nothing
+    Set xl = Nothing
+    Err.Raise vbObjectError + 1012, , "Preuzimanje sa SharePoint-a nije uspelo." & vbCrLf & Err.Description
 End Function
 
 Private Function CompareVersions(ByVal a As String, ByVal b As String) As Long
