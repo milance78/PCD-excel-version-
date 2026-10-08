@@ -2,7 +2,7 @@ Attribute VB_Name = "PCD_Updater"
 Option Explicit
 
 Private Const VERSION_URL As String = "https://api.github.com/repos/milance78/PCD-excel-version-/contents/VERSION.json?ref=main"
-Private Const ARTIFACT_URL As String = "https://raw.githubusercontent.com/milance78/PCD-excel-version-/main/dist/PCD-Excel-Version-latest.xlsm"
+Private Const ARTIFACT_URL As String = "https://api.github.com/repos/milance78/PCD-excel-version-/contents/dist/PCD-Excel-Version-latest.xlsm?ref=main"
 Private Const UPDATE_TIMEOUT_SECONDS As Long = 30
 
 Private Declare PtrSafe Function GetWindowThreadProcessId Lib "user32" (ByVal hwnd As LongPtr, ByRef lpdwProcessId As Long) As Long
@@ -203,6 +203,7 @@ Private Function DownloadUpdate(ByVal remoteVersion As String, ByVal cacheBust A
     http.Open "GET", ARTIFACT_URL & "?v=" & Replace(remoteVersion, " ", "%20") & "&pcd=" & cacheBust, False
     http.SetRequestHeader "Cache-Control", "no-cache"
     http.SetRequestHeader "Pragma", "no-cache"
+    http.SetRequestHeader "Accept", "application/vnd.github.raw+json"
     http.Send
 
     If http.Status < 200 Or http.Status >= 300 Then
